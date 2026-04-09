@@ -1,60 +1,78 @@
-// --- 語音辨識深度優化 ---
-const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-recognition.lang = 'en-US'; 
-recognition.continuous = true;
-recognition.interimResults = true; // 開啟即時修正
-recognition.maxAlternatives = 1;
-
-recognition.onresult = (event) => {
-    let interimTranscript = '';
-    let finalTranscript = '';
-
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-        } else {
-            interimTranscript += event.results[i][0].transcript;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Perio Pro - Voice Fix</title>
+    <style>
+        :root { --primary: #3498db; --danger: #e74c3c; --missing-bg: #455a64; }
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 10px; text-align: center; }
+        .status-header { background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; max-width: 900px; margin: 0 auto 20px; }
+        .tooth { 
+            background: white; border: 1px solid #ccc; padding: 10px 0; border-radius: 5px; 
+            position: relative; transition: all 0.3s; height: 80px; display: flex; flex-direction: column; justify-content: space-between;
         }
+        .tooth.active { border: 3px solid #f1c40f; background: #fff9c4; transform: scale(1.05); }
+        .tooth.is-missing { background: var(--missing-bg); border-color: #263238; color: white; opacity: 0.6; }
+        .tooth.is-missing::after { content: 'X'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 30px; color: rgba(255,255,255,0.3); }
+        .id { font-weight: bold; font-size: 1.2rem; }
+        .data { font-size: 0.8rem; font-weight: bold; color: var(--danger); }
+        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+        #start-btn { padding: 15px 40px; font-size: 18px; border-radius: 30px; border: none; background: #27ae60; color: white; cursor: pointer; font-weight: bold; }
+        #live-log { margin-top: 10px; font-size: 14px; color: #333; height: 20px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="status-header">
+    <div id="mode-display" style="color: var(--primary); font-size: 20px;">Current Mode: <b id="mode-text">General (Missing)</b></div>
+    <div id="live-log">Wait for click...</div>
+</div>
+
+<div class="grid" id="upper-grid"></div>
+<div class="grid" id="lower-grid"></div>
+
+<div class="controls">
+    <button id="start-btn">Start Session</button>
+</div>
+
+<script>
+    const upperIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
+    const lowerIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
+    const teethData = {};
+    let mode = "GENERAL"; // 預設模式
+
+    // 畫圖
+    function draw() {
+        const render = (ids, target) => {
+            const container = document.getElementById(target);
+            ids.forEach(id => {
+                teethData[id] = { db: "-", dl: "-", missing: false };
+                const div = document.createElement('div');
+                div.className = 'tooth'; div.id = `t-${id}`;
+                div.innerHTML = `<span class="id">${id}</span><div class="data" id="d-${id}">-</div>`;
+                container.appendChild(div);
+            });
+        };
+        render(upperIds, 'upper-grid');
+        render(lowerIds, 'lower-grid');
     }
 
-    // 在畫面上顯示「我現在聽到了什麼」
-    document.getElementById('log').innerHTML = 
-        `<span style="color: #999;">Listening: ${interimTranscript}</span><br>
-         <span style="color: #27ae60; font-weight: bold;">Confirmed: ${finalTranscript}</span>`;
+    function speak(t) { window.speechSynthesis.cancel(); const m = new SpeechSynthesisUtterance(t); m.lang='en-US'; window.speechSynthesis.speak(m); }
 
-    const text = finalTranscript.toLowerCase();
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
 
-    // --- 靈敏的數字抓取邏輯 ---
-    const nums = text.match(/\d+/g);
+    rec.onresult = (event) => {
+        let text = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            text += event.results[i][0].transcript.toLowerCase();
+        }
+        document.getElementById('live-log').innerText = "I heard: " + text;
 
-    // 1. 處理模式切換
-    if (text.includes("general")) { mode = "GENERAL"; speak("General mode"); return; }
-    if (text.includes("periodontal") || text.includes("perio")) { mode = "PERIO"; speak("Perio mode"); return; }
-
-    // 2. 處理 Missing (批次處理)
-    if (mode === "GENERAL" && text.includes("missing") && nums) {
-        nums.forEach(n => {
-            const id = parseInt(n);
-            if (teethData[id]) {
-                teethData[id].missing = true;
-                document.getElementById(`unit-${id}`).classList.add('missing');
-            }
-        });
-        speak(`Marked ${nums.length} teeth missing`);
-    }
-
-    // 3. 處理 Perio 數值 (精準對位)
-    if (mode === "PERIO" && nums && nums.length === 3) {
-        const step = sequence[currentStep];
-        const id = step.teeth[currentIdx];
-        
-        // 語音回饋與數據寫入
-        teethData[id][step.surface] = nums.join("");
-        document.getElementById(`v-${step.surface}-${id}`).innerText = nums.join("");
-        speak(`${id}, ${nums.join(" ")}`);
-
-        currentIdx++;
-        // 自動跳轉邏輯...
-        updateHighlight();
-    }
-};
+        // --- 模式切換指令 ---
+        if (text.includes("perio") || text.includes("periodontal")) {
+            mode = "PERIO";
+            document.getElementById('mode-text').innerText = "Periodontal (Probing)";
