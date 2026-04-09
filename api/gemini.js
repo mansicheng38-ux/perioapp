@@ -1,14 +1,13 @@
-module.exports = async function(req, res) {
+export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     const { text } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 終極防彈橫槓：使用 ASCII 代碼 45 強制生成短橫槓，無視 Mac 自動校正
-    const h = String.fromCharCode(45);
-    const model = "gemini" + h + "1.5" + h + "flash";
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey;
+    // 標準的模型網址
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-    const systemPrompt = `
+    // 回到之前會動的寫法：把規則全部放進一般的 Prompt 裡，不使用 SystemInstruction
+    const fullPrompt = `
     You are a dental charting AI. Parse the transcript into a JSON array of actions.
     Teeth are FDI standard (11-48). "one one" means "11".
     
@@ -23,6 +22,8 @@ module.exports = async function(req, res) {
       {"type": "missing", "teeth": ["11", "12"]},
       {"type": "surface", "teeth": ["14"], "surfaces": ["M", "O"], "material": "composite"}
     ]
+    
+    User Transcript: ${text}
     `;
 
     try {
@@ -30,8 +31,8 @@ module.exports = async function(req, res) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: `Transcript: ${text}` }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
+                // 直接將 fullPrompt 放在 contents 裡，徹底避開 not supported 錯誤
+                contents: [{ parts: [{ text: fullPrompt }] }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
             })
         });
@@ -40,9 +41,9 @@ module.exports = async function(req, res) {
         if (data.error) return res.status(200).json({ error: data.error.message });
         
         let aiResult = data.candidates[0].content.parts[0].text;
-        aiResult = aiResult.replace(/```json/gi, '').replace(/```/g, '').trim();
+        aiResult = aiResult.replace(/```json/gi, '').replace(/```/g, '').trim(); // 強制淨化格式
         res.status(200).json(JSON.parse(aiResult));
     } catch (error) {
         res.status(200).json({ error: "Parse Error: " + error.message });
     }
-};
+}
