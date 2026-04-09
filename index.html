@@ -1,91 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perio Assistant Debug Pro</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f4f4; }
-        .status { background: white; padding: 15px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-weight: bold; }
-        #start-btn { padding: 20px 50px; font-size: 20px; background: #27ae60; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3); }
-        #start-btn:active { transform: scale(0.95); }
-        #log { margin-top: 20px; color: #666; font-size: 12px; background: #eee; padding: 10px; border-radius: 5px; }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; max-width: 800px; margin: 20px auto; }
-        .tooth { background: white; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
-        .tooth.active { border: 2px solid #f1c40f; background: #fff9c4; }
-    </style>
-</head>
-<body>
+// --- 語音辨識深度優化 ---
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.lang = 'en-US'; 
+recognition.continuous = true;
+recognition.interimResults = true; // 開啟即時修正
+recognition.maxAlternatives = 1;
 
-    <div id="status" class="status">Step 1: Click the Green Button</div>
-    
-    <button id="start-btn">Start Session</button>
+recognition.onresult = (event) => {
+    let interimTranscript = '';
+    let finalTranscript = '';
 
-    <div id="perio-grid" class="grid"></div>
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+        } else {
+            interimTranscript += event.results[i][0].transcript;
+        }
+    }
 
-    <div id="log">Console Ready...</div>
+    // 在畫面上顯示「我現在聽到了什麼」
+    document.getElementById('log').innerHTML = 
+        `<span style="color: #999;">Listening: ${interimTranscript}</span><br>
+         <span style="color: #27ae60; font-weight: bold;">Confirmed: ${finalTranscript}</span>`;
 
-    <script>
-        // --- 核心邏輯 ---
-        const log = (msg) => {
-            console.log(msg);
-            document.getElementById('log').innerText = msg;
-        };
+    const text = finalTranscript.toLowerCase();
 
-        // 頁面載入後立刻畫圖
-        window.onload = () => {
-            log("Page Loaded. Drawing teeth...");
-            const grid = document.getElementById('perio-grid');
-            [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28].forEach(id => {
-                const div = document.createElement('div');
-                div.className = 'tooth';
-                div.id = `t-${id}`;
-                div.innerText = id;
-                grid.appendChild(div);
-            });
-            log("UI Ready. Please click Start.");
-        };
+    // --- 靈敏的數字抓取邏輯 ---
+    const nums = text.match(/\d+/g);
 
-        // 按鈕點擊事件
-        document.getElementById('start-btn').onclick = async () => {
-            log("Button clicked!"); // 如果沒看到這個，代表程式碼沒更新
-            alert("Button Clicked! Starting initialization...");
+    // 1. 處理模式切換
+    if (text.includes("general")) { mode = "GENERAL"; speak("General mode"); return; }
+    if (text.includes("periodontal") || text.includes("perio")) { mode = "PERIO"; speak("Perio mode"); return; }
 
-            try {
-                // 1. 檢查語音支援
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                    throw new Error("Browser doesn't support Speech Recognition. Use Chrome.");
-                }
-
-                // 2. 請求麥克風
-                log("Requesting microphone...");
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-                log("Microphone access granted!");
-
-                // 3. 啟動辨識
-                const recognition = new SpeechRecognition();
-                recognition.lang = 'en-US';
-                recognition.continuous = true;
-                
-                recognition.onstart = () => {
-                    log("Voice recognition started!");
-                    document.getElementById('start-btn').innerText = "LISTENING...";
-                    document.getElementById('start-btn').style.background = "#e74c3c";
-                };
-
-                recognition.onresult = (event) => {
-                    const text = event.results[event.results.length - 1][0].transcript;
-                    log("Heard: " + text);
-                };
-
-                recognition.start();
-
-            } catch (err) {
-                alert("FATAL ERROR: " + err.message);
-                log("Error: " + err.message);
+    // 2. 處理 Missing (批次處理)
+    if (mode === "GENERAL" && text.includes("missing") && nums) {
+        nums.forEach(n => {
+            const id = parseInt(n);
+            if (teethData[id]) {
+                teethData[id].missing = true;
+                document.getElementById(`unit-${id}`).classList.add('missing');
             }
-        };
-    </script>
-</body>
-</html>
+        });
+        speak(`Marked ${nums.length} teeth missing`);
+    }
+
+    // 3. 處理 Perio 數值 (精準對位)
+    if (mode === "PERIO" && nums && nums.length === 3) {
+        const step = sequence[currentStep];
+        const id = step.teeth[currentIdx];
+        
+        // 語音回饋與數據寫入
+        teethData[id][step.surface] = nums.join("");
+        document.getElementById(`v-${step.surface}-${id}`).innerText = nums.join("");
+        speak(`${id}, ${nums.join(" ")}`);
+
+        currentIdx++;
+        // 自動跳轉邏輯...
+        updateHighlight();
+    }
+};
