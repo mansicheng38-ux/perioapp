@@ -3,28 +3,25 @@ module.exports = async function(req, res) {
     const { text } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 防自動格式化橫槓設計
     const dash = "\x2d";
     const model = "gemini" + dash + "1.5" + dash + "flash";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const systemPrompt = `
     You are a dental charting AI. Parse the transcript into a JSON array of actions.
-    Teeth are FDI standard (11-48). If user says "one one", it means "11".
+    Teeth are FDI standard (11-48). "one one" means "11".
     
     Rules:
     - Handle ranges: "18 to 13 missing" -> missing for 18,17,16,15,14,13.
     - Handle bridges: "13 to 15 bridge" -> bridge for 13,14,15.
     - Handle restorations: "14 MO composite" -> surface for 14, surfaces: ["M","O"], material: "composite". (Materials: composite, gi)
-    - If user says "buckle", it means "buccal" (B). Lingual/Palatal is (L). Mesial (M). Distal (D). Occlusal (O).
+    - "buckle" means "buccal" (B). Lingual/Palatal is (L). Mesial (M). Distal (D). Occlusal (O).
     
-    Output exactly in this JSON format:
+    Output exactly in this JSON format (NO markdown, NO backticks):
     [
       {"type": "missing", "teeth": ["11", "12"]},
-      {"type": "bridge", "teeth": ["13", "14", "15"]},
       {"type": "surface", "teeth": ["14"], "surfaces": ["M", "O"], "material": "composite"}
     ]
-    Return ONLY valid JSON.
     `;
 
     try {
@@ -41,9 +38,12 @@ module.exports = async function(req, res) {
         const data = await response.json();
         if (data.error) return res.status(200).json({ error: data.error.message });
         
-        const aiResult = data.candidates[0].content.parts[0].text;
+        // 強制淨化字串，去除所有 Markdown 符號
+        let aiResult = data.candidates[0].content.parts[0].text;
+        aiResult = aiResult.replace(/```json/gi, '').replace(/```/g, '').trim();
+        
         res.status(200).json(JSON.parse(aiResult));
     } catch (error) {
-        res.status(200).json({ error: error.message });
+        res.status(200).json({ error: "Parse Error: " + error.message });
     }
 };
