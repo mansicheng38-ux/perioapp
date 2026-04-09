@@ -2,48 +2,54 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Voice Dental Pro - Dual Control Fix</title>
+    <title>Ultimate Dental Charting AI</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --success: #16a34a; --danger: #dc2626; --divider: rgba(37, 99, 235, 0.4); }
+        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --success: #16a34a; --danger: #dc2626; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; text-align: center; }
         
-        /* 頂部控制面板 */
+        /* Header & Patient Info */
         .header-panel { background: white; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: sticky; top: 10px; z-index: 1000; }
-        #status-bar { background: #1e293b; color: #38bdf8; padding: 12px; margin: 10px 0; border-radius: 8px; font-family: monospace; font-size: 16px; min-height: 24px; }
+        .patient-box input { font-size: 16px; padding: 8px; border: 2px solid #cbd5e1; border-radius: 6px; font-weight: bold; width: 200px; }
         .mode-btn { padding: 10px 25px; font-weight: bold; cursor: pointer; border: 2px solid var(--primary); background: white; color: var(--primary); border-radius: 8px; margin: 0 5px; }
         .mode-btn.active { background: var(--primary); color: white; }
 
-        /* 圖表區域 */
-        .chart-section { background: white; padding: 30px 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .legend-label { font-weight: bold; color: #64748b; font-size: 12px; width: 30px; text-align: right; }
-        .row-container { display: flex; align-items: center; gap: 10px; margin-bottom: 40px; }
-        .grid-row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 5px; flex-grow: 1; position: relative; }
-        .v-divider { position: absolute; left: 50%; top: -10px; bottom: -10px; width: 4px; background: var(--divider); transform: translateX(-50%); }
+        #log-box { background: #1e293b; color: #38bdf8; padding: 12px; margin: 10px 0; border-radius: 8px; font-family: monospace; font-size: 15px; }
 
-        /* 牙齒視覺 */
+        /* General Charting UI */
+        .chart-section { background: white; padding: 30px 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .row-container { display: flex; align-items: center; gap: 10px; margin-bottom: 40px; }
+        .legend-label { font-weight: bold; color: #64748b; font-size: 12px; width: 30px; text-align: right; display: flex; flex-direction: column; justify-content: space-between; height: 50px; }
+        .grid-row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 4px; flex-grow: 1; position: relative; }
+        .v-divider { position: absolute; left: 50%; top: -10px; bottom: -10px; width: 4px; background: rgba(37, 99, 235, 0.3); transform: translateX(-50%); }
+
+        /* Odontogram */
         .tooth-unit { display: flex; flex-direction: column; align-items: center; position: relative; }
-        .tooth-id { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+        .tooth-id { font-weight: bold; font-size: 14px; margin-bottom: 4px; cursor: pointer; }
         .odontogram { width: 50px; height: 50px; background: white; border: 1px solid #cbd5e1; position: relative; cursor: pointer; }
-        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; }
+        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; transition: 0.1s; }
         .c-composite { fill: #3b82f6 !important; }
         .c-gi { fill: #a855f7 !important; }
-        .missing-mark { display: none; position: absolute; top: 0; left: 0; width: 50px; height: 50px; pointer-events: none; }
+        
+        /* Bridge & Missing */
+        .bridge-line { position: absolute; top: 23px; width: 100%; height: 6px; background: #3b82f6; display: none; z-index: 5; pointer-events: none; }
+        .missing-mark { display: none; position: absolute; top: 0; left: 0; width: 50px; height: 50px; pointer-events: none; z-index: 10; }
         .t-missing .missing-mark { display: block; }
         .t-missing .odontogram { opacity: 0.2; }
 
-        /* Perio 表格 */
-        .perio-ui { display: none; background: white; padding: 20px; border-radius: 12px; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border: 1px solid #cbd5e1; padding: 4px; text-align: center; }
-        .active-cell { background: #fef08a !important; }
+        /* Perio UI */
+        .perio-ui { display: none; background: white; padding: 20px; border-radius: 12px; overflow-x: auto; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+        th, td { border: 1px solid #cbd5e1; padding: 5px; text-align: center; }
+        .active-cell { background: #fef08a !important; font-weight: bold; color: #b45309; }
+        input.p-in { width: 35px; text-align: center; border: 1px solid #ddd; }
 
-        /* 儀表板 */
+        /* Dashboard */
         .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 80px; }
         .bpe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: #000; border: 2px solid #000; width: fit-content; margin: 10px auto; }
         .bpe-grid div { background: white; padding: 10px 20px; font-weight: bold; font-size: 20px; }
 
-        /* 底部按鈕 */
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; border-top: 1px solid #ddd; z-index: 1000; }
+        /* Footer */
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; z-index: 1000; }
         #mic-btn { padding: 15px 60px; border-radius: 50px; border: none; background: var(--success); color: white; font-weight: bold; font-size: 18px; cursor: pointer; }
         .recording { background: var(--danger) !important; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
@@ -52,22 +58,22 @@
 <body>
 
 <div class="header-panel">
-    <div><b>Patient ID:</b> <input type="text" id="patient-id" placeholder="Enter ID..."></div>
+    <div class="patient-box"><b>Patient:</b> <input type="text" placeholder="ID..."></div>
     <div>
         <button class="mode-btn" id="btn-gen" onclick="setMode('general')">General</button>
         <button class="mode-btn" id="btn-perio" onclick="setMode('perio')">Periodontal</button>
     </div>
 </div>
 
-<div id="status-bar">HEARD: (Waiting for Session...)</div>
+<div id="log-box">SYSTEM STANDBY. Press Start Session.</div>
 
 <div class="chart-section" id="general-ui">
     <div class="row-container">
-        <div class="legend-label">B<br><br>L</div>
+        <div class="legend-label"><span>B</span><span>L</span></div>
         <div class="grid-row" id="u-row"><div class="v-divider"></div></div>
     </div>
     <div class="row-container">
-        <div class="legend-label">B<br><br>L</div>
+        <div class="legend-label"><span>B</span><span>L</span></div>
         <div class="grid-row" id="l-row"><div class="v-divider"></div></div>
     </div>
 </div>
@@ -81,8 +87,8 @@
     <div style="background:white; border-radius:12px; padding:15px;">
         <h3>BPE Score</h3>
         <div class="bpe-grid">
-            <div id="b1">-</div><div id="b2">-</div><div id="b3">-</div>
-            <div id="b6">-</div><div id="b5">-</div><div id="b4">-</div>
+            <div id="bpe-1">-</div><div id="bpe-2">-</div><div id="bpe-3">-</div>
+            <div id="bpe-6">-</div><div id="bpe-5">-</div><div id="bpe-4">-</div>
         </div>
     </div>
     <div style="background:white; border-radius:12px; padding:15px;">
@@ -100,52 +106,66 @@
     const uIds = ["18","17","16","15","14","13","12","11","21","22","23","24","25","26","27","28"];
     const lIds = ["48","47","46","45","44","43","42","41","31","32","33","34","35","36","37","38"];
     const allIds = [...uIds, ...lIds];
-    const dentalData = {};
-    let voiceLog = [];
-    let appState = "idle"; // idle, init, general, perio
+    
+    let dentalData = {};
+    let appState = "idle"; 
+    let audioLog = [];
+    
+    // Perio State Machine
+    let perioStep = 0;
+    let toothIndex = 0;
+    const pSeq = [
+        { label: "Upper Buccal PD", type: "PD", side: "b", teeth: uIds, msg: "Start probing depth, 18 distal buccal to 28 distal buccal." },
+        { label: "Upper Buccal BOP", type: "BOP", side: "b", teeth: [...uIds].reverse(), msg: "Record BOP, 28 to 18 buccal." },
+        { label: "Upper Palatal PD", type: "PD", side: "p", teeth: [...uIds].reverse(), msg: "To palatal. Probing depth 28 to 18." },
+        { label: "Upper Palatal BOP", type: "BOP", side: "p", teeth: uIds, msg: "Record BOP, 18 to 28 palatal." },
+        { label: "Lower Buccal PD", type: "PD", side: "b", teeth: [...lIds].reverse(), msg: "Lower arch. Probing depth 38 to 48 buccal." },
+        { label: "Lower Buccal BOP", type: "BOP", side: "b", teeth: lIds, msg: "Record BOP, 48 to 38 buccal." },
+        { label: "Lower Lingual PD", type: "PD", side: "p", teeth: lIds, msg: "To lingual. Probing depth 48 to 38." },
+        { label: "Lower Lingual BOP", type: "BOP", side: "p", teeth: [...lIds].reverse(), msg: "Record BOP, 38 to 48 lingual." },
+        { label: "Recession", type: "REC", msg: "Record recession mid-buccal. E.g., 11 recession 2." },
+        { label: "Mobility", type: "MOB", msg: "Record mobility. E.g., 11 mobility 2." }
+    ];
 
-    allIds.forEach(id => {
-        dentalData[id] = { missing: false, surfaces: {}, pd: {b:[], p:[]}, bop: {b:[], p:[]}, rec: "", mob: "" };
-    });
+    allIds.forEach(id => { dentalData[id] = { missing: false, bridge: false, surfaces: {}, pd: {b:[], p:[]}, bop: {b:[], p:[]}, rec: "", mob: "" }; });
 
     /* --- INITIALIZE UI --- */
     window.onload = () => {
-        const render = (ids, target) => {
+        const renderGen = (ids, target) => {
             const el = document.getElementById(target);
             ids.forEach(id => {
-                let isLeft = ["1","4"].includes(id[0]);
+                let isLeft = ["1","4"].includes(id[0]); // M side points to midline
                 el.innerHTML += `
                 <div class="tooth-unit" id="unit-${id}">
-                    <div class="tooth-id">${id}</div>
-                    <div style="position:relative; width:50px; height:50px;" onclick="manualMissing('${id}')">
+                    <div class="tooth-id" onclick="manualStatus('${id}', 'missing')">${id}</div>
+                    <div class="bridge-line" id="br-${id}"></div>
+                    <div style="position:relative; width:50px; height:50px;">
                         <svg class="odontogram" viewBox="0 0 100 100">
-                            <path id="${id}-B" class="surface" d="M0 0 L100 0 L80 20 L20 20 Z" onclick="manualSurface(event,'${id}','B')"/>
-                            <path id="${id}-L" class="surface" d="M0 100 L100 100 L80 80 L20 80 Z" onclick="manualSurface(event,'${id}','L')"/>
-                            <path id="${id}-M" class="surface" d="${isLeft ? 'M100 0 L80 20 L80 80 L100 100 Z' : 'M0 0 L20 20 L20 80 L0 100 Z'}" onclick="manualSurface(event,'${id}','M')"/>
-                            <path id="${id}-D" class="surface" d="${isLeft ? 'M0 0 L20 20 L20 80 L0 100 Z' : 'M100 0 L80 20 L80 80 L100 100 Z'}" onclick="manualSurface(event,'${id}','D')"/>
-                            <rect id="${id}-O" class="surface" x="20" y="20" width="60" height="60" onclick="manualSurface(event,'${id}','O')"/>
+                            <path id="${id}-B" class="surface" d="M0 0 L100 0 L80 20 L20 20 Z" onclick="manualSurface('${id}','B')"/>
+                            <path id="${id}-L" class="surface" d="M0 100 L100 100 L80 80 L20 80 Z" onclick="manualSurface('${id}','L')"/>
+                            <path id="${id}-M" class="surface" d="${isLeft ? 'M100 0 L80 20 L80 80 L100 100 Z' : 'M0 0 L20 20 L20 80 L0 100 Z'}" onclick="manualSurface('${id}','M')"/>
+                            <path id="${id}-D" class="surface" d="${isLeft ? 'M0 0 L20 20 L20 80 L0 100 Z' : 'M100 0 L80 20 L80 80 L100 100 Z'}" onclick="manualSurface('${id}','D')"/>
+                            <rect id="${id}-O" class="surface" x="20" y="20" width="60" height="60" onclick="manualSurface('${id}','O')"/>
                         </svg>
-                        <svg class="missing-mark" viewBox="0 0 100 100"><line x1="0" y1="0" x2="100" y2="100" stroke="red" stroke-width="10"/><line x1="100" y1="0" x2="0" y2="100" stroke="red" stroke-width="10"/></svg>
+                        <svg class="missing-mark" viewBox="0 0 100 100"><line x1="0" y1="0" x2="100" y2="100" stroke="red" stroke-width="8"/><line x1="100" y1="0" x2="0" y2="100" stroke="red" stroke-width="8"/></svg>
                     </div>
                 </div>`;
             });
         };
-        render(uIds, 'u-row'); render(lIds, 'l-row');
-        renderPerioTable();
+        renderGen(uIds, 'u-row'); renderGen(lIds, 'l-row');
+
+        const renderPerio = (ids, target) => {
+            let h = `<tr><th>ID</th>` + ids.map(id => `<th id="pth-${id}">${id}</th>`).join('') + `</tr>`;
+            h += `<tr><td>MOB</td>` + ids.map(id => `<td><input class="p-in" id="pmob-${id}" oninput="manualPerio()"></td>`).join('') + `</tr>`;
+            h += `<tr><td>REC</td>` + ids.map(id => `<td><input class="p-in" id="prec-${id}" oninput="manualPerio()"></td>`).join('') + `</tr>`;
+            h += `<tr><td>PDB</td>` + ids.map(id => `<td><input class="p-in" id="pdb-${id}" oninput="manualPerio()"></td>`).join('') + `</tr>`;
+            h += `<tr><td>PDP</td>` + ids.map(id => `<td><input class="p-in" id="pdp-${id}" oninput="manualPerio()"></td>`).join('') + `</tr>`;
+            document.getElementById(target).innerHTML = h;
+        };
+        renderPerio(uIds, 'table-upper'); renderPerio(lIds, 'table-lower');
     };
 
-    function renderPerioTable() {
-        const build = (ids) => {
-            let h = `<tr><th>ID</th>` + ids.map(id => `<th>${id}</th>`).join('') + `</tr>`;
-            h += `<tr><td>PDB</td>` + ids.map(id => `<td id="pdb-${id}"></td>`).join('') + `</tr>`;
-            h += `<tr><td>PDP</td>` + ids.map(id => `<td id="pdp-${id}"></td>`).join('') + `</tr>`;
-            return h;
-        };
-        document.getElementById('table-upper').innerHTML = build(uIds);
-        document.getElementById('table-lower').innerHTML = build(lIds);
-    }
-
-    /* --- SPEECH ENGINE --- */
+    /* --- SPEECH LOGIC --- */
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'en-US'; rec.continuous = true;
 
@@ -155,22 +175,15 @@
         if(appState === "idle") {
             rec.start(); appState = "init";
             document.getElementById('mic-btn').classList.add('recording');
-            speak("System started. General or Periodontal?");
+            speak("General or Periodontal?");
         } else { location.reload(); }
     }
 
-    rec.onresult = (e) => {
+    rec.onresult = async (e) => {
         let raw = e.results[e.results.length - 1][0].transcript;
         voiceLog.push(raw);
         let t = raw.toLowerCase().trim();
-
-        // 關鍵糾錯映射
-        t = t.replace(/buckle/g, "buccal");
-        t = t.replace(/(\d{2})\s+two\s+(\d{2})/g, "$1 to $2"); // 修正 31 two 35 -> 31 to 35
-        t = t.replace(/one\s+one/g, "11").replace(/one\s+two/g, "12").replace(/one\s+three/g, "13").replace(/one\s+four/g, "14").replace(/one\s+five/g, "15");
-        t = t.replace(/\b(\d)\s+(\d)\b/g, "$1$2"); // "3 1" -> "31"
-
-        document.getElementById('status-bar').innerText = "HEARD: " + t;
+        document.getElementById('log-box').innerText = "HEARD: " + t;
 
         if (t.includes("play back recording")) { speak("Recording: " + voiceLog.join(". ")); return; }
 
@@ -178,72 +191,139 @@
             if (t.includes("general")) setMode('general', true);
             else if (t.includes("perio")) setMode('perio', true);
         } else if (appState === "general") {
-            processGeneral(t);
+            // General 呼叫 Gemini AI API
+            document.getElementById('log-box').innerText = "AI Analyzing: " + t;
+            try {
+                let res = await fetch('/api/gemini', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text: t}) });
+                let data = await res.json();
+                if(!data.error && Array.isArray(data)) { applyAI(data); speak("Updated."); }
+                document.getElementById('log-box').innerText = "HEARD: " + t;
+            } catch(err) { console.error(err); }
+        } else if (appState === "perio") {
+            // Perio 留在本地處理，確保無延遲
+            processPerio(t);
         }
-        // ... Perio 邏輯與之前保持一致
     };
 
-    /* --- LOGIC HANDLERS --- */
-    function processGeneral(t) {
-        // 範圍處理: "31 to 35 missing"
-        const range = t.match(/(\d{2})\s*to\s*(\d{2})\s*(missing|bridge)/);
-        if (range) {
-            let s = parseInt(range[1]), e = parseInt(range[2]);
-            let min = Math.min(s, e), max = Math.max(s, e);
-            allIds.forEach(id => {
-                if (parseInt(id) >= min && parseInt(id) <= max) {
-                    if (range[3] === "missing") updateStatus(id, 'missing', true);
-                    if (range[3] === "bridge") updateStatus(id, 'bridge', true);
+    /* --- APPLY AI RESULTS (General) --- */
+    function applyAI(actions) {
+        actions.forEach(a => {
+            a.teeth.forEach(id => {
+                if (a.type === "missing") updateStatus(id, 'missing', true);
+                if (a.type === "bridge") updateStatus(id, 'bridge', true);
+                if (a.type === "surface") {
+                    a.surfaces.forEach(s => setSurface(id, s, a.material));
                 }
             });
-            speak(`${range[3]} from ${s} to ${e}`);
+        });
+    }
+
+    /* --- PERIO STATE MACHINE (Local) --- */
+    function processPerio(t) {
+        const step = pSeq[perioStep];
+        if (!step) return;
+
+        if (step.type === "REC" || step.type === "MOB") {
+            let tFormat = t.replace(/one one/g, "11").replace(/two one/g,"21").replace(/\b(\d)\s+(\d)\b/g, "$1$2");
+            let idMatch = tFormat.match(/\b([1-4][1-8])\b/);
+            if (!idMatch) return;
+            let id = idMatch[1];
+
+            if (step.type === "REC" && tFormat.match(/recession\s*(\d+)/)) {
+                let v = tFormat.match(/recession\s*(\d+)/)[1];
+                document.getElementById(`prec-${id}`).value = v; dentalData[id].rec = v; speak(`Recession ${v}`);
+            }
+            if (step.type === "MOB" && tFormat.match(/mobility\s*(1|2|3|i{1,3})/)) {
+                let v = tFormat.match(/mobility\s*(1|2|3|i{1,3})/)[1].toUpperCase();
+                document.getElementById(`pmob-${id}`).value = v; dentalData[id].mob = v; speak(`Mobility ${v}`);
+            }
             return;
         }
 
-        // 個別牙齒處理: "31 buccal composite"
-        const ids = t.match(/\b([1-4][1-8])\b/g);
-        if (!ids) return;
+        // PD & BOP
+        let tooth = step.teeth[toothIndex];
+        let nextTooth = step.teeth[toothIndex + 1];
 
-        ids.forEach(id => {
-            if (t.includes("missing")) updateStatus(id, 'missing', true);
+        // UI Highlighting
+        allIds.forEach(id => { let th = document.getElementById(`pth-${id}`); if(th) th.classList.remove('active-cell'); });
+        document.getElementById(`pth-${tooth}`).classList.add('active-cell');
+
+        let digits = t.replace(/\s+/g, '').match(/\d{3}/);
+        if (digits) {
+            let vals = digits[0].split('');
+            let prefix = step.side === "b" ? "pdb" : "pdp";
             
-            let mat = t.includes("composite") ? "composite" : (t.includes("gi") ? "gi" : null);
-            if (mat) {
-                if (t.includes("buccal") || t.includes(" b ")) setSurface(id, 'B', mat);
-                if (t.includes("lingual") || t.includes(" l ")) setSurface(id, 'L', mat);
-                if (t.includes("mo")) { setSurface(id, 'M', mat); setSurface(id, 'O', mat); }
-                if (t.includes("occlusal") || t.includes(" o ")) setSurface(id, 'O', mat);
+            if (step.type === "PD") {
+                dentalData[tooth].pd[step.side] = vals;
+                document.getElementById(`${prefix}-${tooth}`).value = vals.join('');
+            } else {
+                dentalData[tooth].bop[step.side] = vals.map(Number);
+                if (vals.includes('1')) document.getElementById(`${prefix}-${tooth}`).style.color = "red";
             }
-        });
-        speak("Updated");
+            
+            toothIndex++;
+            // Midline Alert
+            if (nextTooth && ((tooth==11 && nextTooth==21) || (tooth==21 && nextTooth==11) || (tooth==31 && nextTooth==41) || (tooth==41 && nextTooth==31))) {
+                speak("Through midline");
+            }
+
+            if (toothIndex >= step.teeth.length) {
+                perioStep++; toothIndex = 0;
+                if (pSeq[perioStep]) speak(pSeq[perioStep].msg);
+            }
+            calculatePerio();
+        }
     }
 
-    /* --- MANUAL HELPERS --- */
-    function setMode(m, voice = false) {
+    /* --- HELPERS & CALCS --- */
+    function setMode(m, voice=false) {
         appState = m;
         document.getElementById('btn-gen').classList.toggle('active', m === 'general');
         document.getElementById('btn-perio').classList.toggle('active', m === 'perio');
         document.getElementById('general-ui').style.display = m === 'general' ? 'block' : 'none';
         document.getElementById('perio-ui').style.display = m === 'perio' ? 'block' : 'none';
-        if(voice) speak(`${m} mode active.`);
+        if(voice) speak(`${m} mode. ` + (m === 'perio' ? pSeq[0].msg : ""));
     }
 
-    function manualMissing(id) { updateStatus(id, 'missing', !dentalData[id].missing); }
-    function manualSurface(e, id, s) {
-        e.stopPropagation();
+    function manualStatus(id, key) { updateStatus(id, key, !dentalData[id][key]); }
+    function manualSurface(id, s) {
         const mats = [null, 'composite', 'gi'];
-        let next = mats[(mats.indexOf(dentalData[id].surfaces[s]) + 1) % mats.length];
-        setSurface(id, s, next);
+        let cur = dentalData[id].surfaces[s];
+        setSurface(id, s, mats[(mats.indexOf(cur) + 1) % mats.length]);
     }
-
     function updateStatus(id, key, val) {
         dentalData[id][key] = val;
-        document.getElementById(`unit-${id}`).classList.toggle('t-missing', dentalData[id].missing);
+        if(key === 'missing') document.getElementById(`unit-${id}`).classList.toggle('t-missing', val);
+        if(key === 'bridge') document.getElementById(`br-${id}`).style.display = val ? 'block' : 'none';
     }
-
     function setSurface(id, s, mat) {
         dentalData[id].surfaces[s] = mat;
         document.getElementById(`${id}-${s}`).className.baseVal = "surface" + (mat ? ` c-${mat}` : "");
+    }
+
+    function manualPerio() { calculatePerio(); } // 支援手動輸入時自動計算
+
+    function calculatePerio() {
+        const sxt = { 1:[18,17,16,15,14], 2:[13,12,11,21,22,23], 3:[24,25,26,27,28], 6:[48,47,46,45,44], 5:[43,42,41,31,32,33], 4:[34,35,36,37,38] };
+        let bopPos=0, bopTot=0;
+        
+        for (let s in sxt) {
+            let maxPd = 0;
+            sxt[s].forEach(id => {
+                ['pdb','pdp'].forEach(p => {
+                    let val = document.getElementById(`${p}-${id}`).value;
+                    for (let c of val) { let n = parseInt(c); if(n > maxPd) maxPd = n; }
+                });
+                
+                // BOP count (如果 PD 有填值，才去算 BOP)
+                [...dentalData[id].bop.b, ...dentalData[id].bop.p].forEach(v => {
+                    if (v !== undefined) { bopTot++; if(v === 1) bopPos++; }
+                });
+            });
+            let code = maxPd === 0 ? "-" : (maxPd <= 3 ? "1/2" : (maxPd <= 5 ? "3" : "4"));
+            document.getElementById(`bpe-${s}`).innerText = code;
+        }
+        document.getElementById('bop-stat').innerText = bopTot === 0 ? "0%" : Math.round((bopPos/bopTot)*100) + "%";
     }
 </script>
 </body>
