@@ -13,14 +13,16 @@ export default async function handler(req, res) {
 CONDITIONS: "missing", "implant", "composite", "gi", "zirconia_crown", "cmc_crown", "caries", "abrasion".
 SURFACES: B (Buccal), L (Lingual), M (Mesial), D (Distal), O (Occlusal), I (Incisal).
 RULES:
-1. DIGITS: "one three" or "1 3" is tooth 13. "four six" is 46.
-2. RANGES: "41 to 46" means [41,42,43,44,45,46]. "two" or "too" means "to".
-3. PHONETICS: "gee eye" = "gi", "composit" = "composite".
-4. SURFACES: "MO composite" maps to {"M":"composite", "O":"composite"}.
-5. STATUS: "missing", "implant", "crown" apply to the whole tooth 'status'.
-6. OUTPUT: Return JSON mapping tooth to { status?: string, surfaces?: { [surface]: string } }.
-EXAMPLE: "14 BO composite and 15 missing" -> {"14": {"surfaces": {"B": "composite", "O": "composite"}}, "15": {"status": "missing"}}
-Return ONLY valid JSON.` }]
+1. DIGITS & WORDS: "one eight", "18", or "eighteen" all mean tooth 18.
+2. LISTS (IMPORTANT): If given a list like "18 17 16 missing", you MUST apply "missing" to 18, 17, AND 16.
+3. RANGES: "41 to 46" means [41,42,43,44,45,46]. "two" or "too" between numbers means "to".
+4. PHONETICS: "gee eye" = "gi", "composit" = "composite".
+5. SURFACES: "14 MO composite" maps to {"M":"composite", "O":"composite"}.
+6. STATUS: "missing", "implant", "crown" apply to the whole tooth 'status'.
+7. OUTPUT: Return JSON mapping tooth to { status?: string, surfaces?: { [surface]: string } }.
+EXAMPLE 1: "18 17 16 missing" -> {"18":{"status":"missing"}, "17":{"status":"missing"}, "16":{"status":"missing"}}
+EXAMPLE 2: "14 BO composite" -> {"14":{"surfaces":{"B":"composite", "O":"composite"}}}
+Return ONLY valid JSON. Do NOT use markdown code blocks.` }]
                 },
                 contents: [{ parts: [{ text: text }] }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
@@ -28,8 +30,9 @@ Return ONLY valid JSON.` }]
         });
 
         const data = await response.json();
-        res.status(200).json(JSON.parse(data.candidates[0].content.parts[0].text));
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-}
+        let jsonString = data.candidates[0].content.parts[0].text;
+        
+        // 【防呆機制】：強制把 Gemini 亂加的 ```json 符號拔掉
+        jsonString = jsonString.replace(/```json/gi, '').replace(/```/g, '').trim();
+        
+        res.status(200).json(JSON.parse(json
