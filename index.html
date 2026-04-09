@@ -262,4 +262,73 @@
         let tooth = step.teeth[toothIndex];
         let nextTooth = step.teeth[toothIndex + 1];
 
-        allIds.forEach(id => {
+        allIds.forEach(id => { let th = document.getElementById(`pth-${id}`); if(th) th.classList.remove('active-cell'); });
+        document.getElementById(`pth-${tooth}`).classList.add('active-cell');
+
+        let digits = t.replace(/\s+/g, '').match(/\d{3}/);
+        if (digits) {
+            let vals = digits[0].split('');
+            let prefix = step.side === "b" ? "pdb" : "pdp";
+            
+            if (step.type === "PD") {
+                dentalData[tooth].pd[step.side] = vals;
+                document.getElementById(`${prefix}-${tooth}`).value = vals.join('');
+            } else {
+                dentalData[tooth].bop[step.side] = vals.map(Number);
+                if (vals.includes('1')) document.getElementById(`${prefix}-${tooth}`).style.color = "red";
+            }
+            
+            toothIndex++;
+            if (nextTooth && ((tooth==11 && nextTooth==21) || (tooth==21 && nextTooth==11) || (tooth==31 && nextTooth==41) || (tooth==41 && nextTooth==31))) {
+                speak("Through midline");
+            }
+
+            if (toothIndex >= step.teeth.length) {
+                perioStep++; toothIndex = 0;
+                if (pSeq[perioStep]) speak(pSeq[perioStep].msg);
+            }
+            calculatePerio();
+        }
+    }
+
+    function manualStatus(id, key) { updateStatus(id, key, !dentalData[id][key]); }
+    function manualSurface(id, s) {
+        const mats = [null, 'composite', 'gi'];
+        let cur = dentalData[id].surfaces[s];
+        setSurface(id, s, mats[(mats.indexOf(cur) + 1) % mats.length]);
+    }
+    function updateStatus(id, key, val) {
+        dentalData[id][key] = val;
+        if(key === 'missing') document.getElementById(`unit-${id}`).classList.toggle('t-missing', val);
+        if(key === 'bridge') document.getElementById(`br-${id}`).style.display = val ? 'block' : 'none';
+    }
+    function setSurface(id, s, mat) {
+        dentalData[id].surfaces[s] = mat;
+        document.getElementById(`${id}-${s}`).className.baseVal = "surface" + (mat ? ` c-${mat}` : "");
+    }
+
+    function manualPerio() { calculatePerio(); } 
+
+    function calculatePerio() {
+        const sxt = { 1:[18,17,16,15,14], 2:[13,12,11,21,22,23], 3:[24,25,26,27,28], 6:[48,47,46,45,44], 5:[43,42,41,31,32,33], 4:[34,35,36,37,38] };
+        let bopPos=0, bopTot=0;
+        
+        for (let s in sxt) {
+            let maxPd = 0;
+            sxt[s].forEach(id => {
+                ['pdb','pdp'].forEach(p => {
+                    let val = document.getElementById(`${p}-${id}`).value;
+                    for (let c of val) { let n = parseInt(c); if(n > maxPd) maxPd = n; }
+                });
+                [...dentalData[id].bop.b, ...dentalData[id].bop.p].forEach(v => {
+                    if (v !== undefined) { bopTot++; if(v === 1) bopPos++; }
+                });
+            });
+            let code = maxPd === 0 ? "-" : (maxPd <= 3 ? "1/2" : (maxPd <= 5 ? "3" : "4"));
+            document.getElementById(`bpe-${s}`).innerText = code;
+        }
+        document.getElementById('bop-stat').innerText = bopTot === 0 ? "0%" : Math.round((bopPos/bopTot)*100) + "%";
+    }
+</script>
+</body>
+</html>
