@@ -3,27 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio Pro - Final Clinical</title>
+    <title>Voice Perio - Clinical Final</title>
     <style>
-        :root { --primary: #3498db; --success: #27ae60; --bg: #f8fafc; --divider: rgba(52, 152, 219, 0.4); }
+        :root { --primary: #3498db; --success: #27ae60; --bg: #f8fafc; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; padding: 0; margin: 0; }
-        .header { background: white; padding: 15px; border-bottom: 3px solid var(--primary); }
+        .header { background: white; padding: 15px; border-bottom: 3px solid var(--primary); margin-bottom: 20px; }
         
+        /* 牙科十字象限線 */
         .chart-wrapper { 
-            position: relative; max-width: 1050px; margin: 20px auto; 
-            background: white; padding: 50px 20px; border-radius: 15px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 70px;
+            position: relative; max-width: 1050px; margin: 0 auto; background: white; 
+            padding: 40px 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            display: flex; flex-direction: column; gap: 60px;
         }
-        .v-divider { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: var(--divider); transform: translateX(-50%); z-index: 1; }
-        .h-divider { position: absolute; left: 0; right: 0; top: 50%; height: 3px; background: var(--divider); transform: translateY(-50%); z-index: 1; }
+        .v-divider { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: rgba(52,152,219,0.3); transform: translateX(-50%); z-index: 1; }
+        .h-divider { position: absolute; left: 0; right: 0; top: 50%; height: 3px; background: rgba(52,152,219,0.3); transform: translateY(-50%); z-index: 1; }
 
         .row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 10px; position: relative; z-index: 2; }
         .tooth-container { display: flex; flex-direction: column; align-items: center; position: relative; }
-        .tooth-label { font-weight: bold; font-size: 13px; margin-bottom: 6px; color: #475569; }
+        .tooth-label { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #475569; }
         .odontogram { width: 48px; height: 48px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; }
         
         .c-composite { fill: #3498db !important; }
-        .c-gi { fill: #9b59b6 !important; }
         .c-caries { fill: #e74c3c !important; }
         
         .missing-x { display: none; position: absolute; top: 0; left: 0; width: 48px; height: 48px; pointer-events: none; }
@@ -31,15 +31,15 @@
         .t-missing .odontogram { opacity: 0.2; }
 
         .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; border-top: 2px solid #eee; z-index: 1000; }
-        #start-btn { padding: 18px 60px; font-size: 18px; border-radius: 50px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        #start-btn { padding: 15px 60px; font-size: 18px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
         #live-box { background: #f1f5f9; padding: 12px; border-radius: 10px; margin-top: 10px; font-weight: bold; min-height: 24px; color: #8e44ad; }
-        #ai-response-box { background: #1e293b; color: #38bdf8; padding: 10px; margin: 10px auto; max-width: 900px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; }
+        #debug-log { background: #1e293b; color: #38bdf8; padding: 10px; margin: 15px auto; max-width: 900px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div id="mode-title" style="font-weight: bold; font-size: 24px;">SYSTEM READY</div>
+    <div id="mode-title" style="font-weight: bold; font-size: 22px;">VOICE PERIO READY</div>
     <div id="live-box">Wait for Start...</div>
 </div>
 
@@ -49,7 +49,7 @@
     <div class="row" id="lower-grid"></div>
 </div>
 
-<div id="ai-response-box">AI Response will appear here...</div>
+<div id="debug-log">AI Log: No data yet.</div>
 
 <div class="controls">
     <button id="start-btn">Start Session</button>
@@ -89,16 +89,10 @@
         const tid = String(id).trim();
         const container = document.getElementById(`container-${tid}`);
         if (!container) return;
-        
-        container.classList.remove('t-missing');
-        if (teethData[tid].status === 'missing') container.classList.add('t-missing');
-
+        container.classList.toggle('t-missing', teethData[tid].status === 'missing');
         ['B','L','M','D','O'].forEach(s => {
             const p = document.getElementById(`${tid}-${s}`);
-            if (p) {
-                const mat = teethData[tid].surfaces[s];
-                p.style.fill = mat === 'composite' ? '#3498db' : mat === 'gi' ? '#9b59b6' : mat === 'caries' ? '#e74c3c' : '#fff';
-            }
+            if (p) p.style.fill = teethData[tid].surfaces[s] === 'composite' ? '#3498db' : '#fff';
         });
     }
 
@@ -108,23 +102,19 @@
     rec.onresult = (event) => {
         const text = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
         document.getElementById('live-box').innerText = "Heard: " + text;
-        
-        if (appState === "selecting") {
-            if (text.includes("general")) {
-                appState = "charting";
-                document.getElementById('mode-title').innerText = "GENERAL CHARTING";
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance("General online."));
-            }
+        if (appState === "selecting" && text.includes("general")) {
+            appState = "charting";
+            document.getElementById('mode-title').innerText = "GENERAL CHARTING";
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance("General confirmed."));
         } else if (appState === "charting") {
             processAI(text);
         }
     };
 
     async function processAI(text) {
-        const box = document.getElementById('live-box');
-        const respBox = document.getElementById('ai-response-box');
-        box.innerText = "Gemini Analyzing...";
-
+        const bar = document.getElementById('live-box');
+        const log = document.getElementById('debug-log');
+        bar.innerText = "Analyzing...";
         try {
             const res = await fetch('/api/gemini', {
                 method: 'POST',
@@ -132,31 +122,23 @@
                 body: JSON.stringify({ text })
             });
             const data = await res.json();
-            respBox.innerText = "AI RESPONSE: " + JSON.stringify(data);
-
-            if (data.apiError) {
-                box.innerText = "Error: " + data.apiError;
-                return;
-            }
-
+            log.innerText = "AI Response: " + JSON.stringify(data);
             if (Array.isArray(data)) {
                 data.forEach(item => {
-                    const tid = String(item.id);
-                    if (teethData[tid]) {
-                        if (item.status) teethData[tid].status = item.status;
-                        if (item.surfaces) Object.assign(teethData[tid].surfaces, item.surfaces);
-                        updateUI(tid);
+                    if (teethData[item.id]) {
+                        if (item.status) teethData[item.id].status = item.status;
+                        if (item.surfaces) Object.assign(teethData[item.id].surfaces, item.surfaces);
+                        updateUI(item.id);
                     }
                 });
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance("Recorded."));
             }
-        } catch (e) { respBox.innerText = "Error: " + e.message; }
-        box.innerText = "Ready.";
+        } catch (e) { log.innerText = "Error: " + e.message; }
+        bar.innerText = "Ready.";
     }
 
     document.getElementById('start-btn').onclick = () => {
         appState = "selecting";
-        document.getElementById('start-btn').innerText = "LISTENING";
+        document.getElementById('start-btn').innerText = "MIC ON";
         window.speechSynthesis.speak(new SpeechSynthesisUtterance("General or Perio?"));
         try { rec.start(); } catch(e) {}
     };
