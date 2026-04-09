@@ -3,65 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio Pro - Quadrant Final</title>
+    <title>Voice Perio Pro - Fix 1.0</title>
     <style>
-        :root { --primary: #3498db; --success: #27ae60; --bg: #f8fafc; --divider: rgba(52, 152, 219, 0.5); }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; padding: 0; margin: 0; }
+        :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f8fafc; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; margin: 0; padding: 0; }
         .header { background: white; padding: 20px; border-bottom: 3px solid var(--primary); }
         
-        /* 十字分隔線佈局 */
+        /* 十字線佈局 */
         .chart-wrapper { 
-            position: relative; max-width: 1050px; margin: 30px auto; 
-            background: white; padding: 50px 20px; border-radius: 15px; 
-            box-shadow: 0 5px 25px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 70px;
+            position: relative; max-width: 1000px; margin: 20px auto; 
+            background: white; padding: 40px 20px; border-radius: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 60px;
         }
-        .v-divider { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: var(--divider); transform: translateX(-50%); z-index: 1; }
-        .h-divider { position: absolute; left: 0; right: 0; top: 50%; height: 4px; background: var(--divider); transform: translateY(-50%); z-index: 1; }
+        .v-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: rgba(52, 152, 219, 0.3); transform: translateX(-50%); z-index: 1; }
+        .h-line { position: absolute; left: 0; right: 0; top: 50%; height: 4px; background: rgba(52, 152, 219, 0.3); transform: translateY(-50%); z-index: 1; }
 
-        /* 網格排列：上顎 18-11, 21-28 | 下顎 48-41, 31-38 */
         .row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 10px; position: relative; z-index: 2; }
-
         .tooth-container { display: flex; flex-direction: column; align-items: center; position: relative; }
-        .tooth-label { font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #475569; }
-        .odontogram { width: 50px; height: 50px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; position: relative; }
-        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; }
+        .tooth-label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #475569; }
         
-        /* 視覺樣式 */
+        .odontogram { width: 48px; height: 48px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; }
+        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; transition: 0.1s; }
+        
+        /* 視覺狀態 */
         .c-composite { fill: #3498db !important; }
         .c-gi { fill: #9b59b6 !important; }
         .c-caries { fill: #e74c3c !important; }
         
-        .missing-x { display: none; position: absolute; top: 0; left: 0; width: 50px; height: 50px; pointer-events: none; }
+        .missing-x { display: none; position: absolute; top: 0; left: 0; width: 48px; height: 48px; pointer-events: none; }
         .t-missing .missing-x { display: block; }
-        .t-missing .odontogram { opacity: 0.3; background: #eee; }
-        .t-implant .odontogram { border: 3px solid #1e293b; border-radius: 50%; }
+        .t-missing .odontogram { opacity: 0.2; }
 
-        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; border-top: 2px solid #ddd; z-index: 1000; }
-        #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 50px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        #live-box { background: #fef3c7; padding: 12px; border-radius: 10px; margin-top: 15px; font-weight: bold; font-size: 16px; min-height: 24px; color: #d97706; }
-        #raw-data { background: #1e293b; color: #38bdf8; padding: 10px; margin: 10px auto; max-width: 900px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; }
+        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; border-top: 2px solid #eee; z-index: 1000; }
+        #start-btn { padding: 15px 60px; font-size: 18px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        #status-bar { background: #f1f5f9; padding: 12px; border-radius: 10px; margin-top: 10px; font-weight: bold; min-height: 24px; color: #8e44ad; }
+        
+        #ai-log { background: #1e293b; color: #38bdf8; padding: 15px; margin: 15px auto; max-width: 900px; border-radius: 8px; font-family: monospace; font-size: 12px; text-align: left; }
+        .thinking { background: #fef3c7 !important; color: #d97706 !important; }
+        .error { color: #f87171 !important; border: 2px solid #f87171; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div id="mode-title" style="font-weight: bold; font-size: 24px; color: #1e293b;">SYSTEM READY</div>
-    <div id="live-box">Press Start Session</div>
+    <div id="mode-title" style="font-weight: bold; font-size: 22px;">VOICE PERIO - STABLE</div>
+    <div id="status-bar">Press Start Session</div>
 </div>
 
 <div class="chart-wrapper">
-    <div class="v-divider"></div><div class="h-divider"></div>
+    <div class="v-line"></div><div class="h-line"></div>
     <div class="row" id="upper-grid"></div>
     <div class="row" id="lower-grid"></div>
 </div>
 
-<div id="raw-data">AI DATA LOG: Waiting for input...</div>
+<div id="ai-log">AI Log: Waiting for session...</div>
 
 <div class="controls">
     <button id="start-btn">Start Session</button>
 </div>
 
 <script>
+    // 象限排列：左上(18-11), 右上(21-28), 左下(48-41), 右下(31-38)
     const uIds = ["18","17","16","15","14","13","12","11", "21","22","23","24","25","26","27","28"];
     const lIds = ["48","47","46","45","44","43","42","41", "31","32","33","34","35","36","37","38"];
     const teethData = {};
@@ -75,7 +77,7 @@
                 el.innerHTML += `
                 <div class="tooth-container" id="container-${id}">
                     <div class="tooth-label">${id}</div>
-                    <div style="position:relative; width:50px; height:50px;">
+                    <div style="position:relative; width:48px; height:48px;">
                         <svg class="odontogram" viewBox="0 0 100 100">
                             <path id="${id}-B" class="surface" d="M0 0 L100 0 L75 25 L25 25 Z" />
                             <path id="${id}-L" class="surface" d="M0 100 L100 100 L75 75 L25 75 Z" />
@@ -96,12 +98,11 @@
         const container = document.getElementById(`container-${tid}`);
         if (!container) return;
         const data = teethData[tid];
-        container.classList.remove('t-missing', 't-implant');
+        container.classList.remove('t-missing');
         if (data.status === 'missing') container.classList.add('t-missing');
-        if (data.status === 'implant') container.classList.add('t-implant');
-        ['B', 'L', 'M', 'D', 'O'].forEach(s => {
+        ['B','L','M','D','O'].forEach(s => {
             const p = document.getElementById(`${tid}-${s}`);
-            if (p) p.className.baseVal = "surface " + (data.surfaces[s] ? `c-${data.surfaces[s]}` : "");
+            if(p) p.className.baseVal = "surface " + (data.surfaces[s] ? `c-${data.surfaces[s]}` : "");
         });
     }
 
@@ -110,23 +111,23 @@
 
     rec.onresult = (event) => {
         const text = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-        document.getElementById('live-box').innerText = "Heard: " + text;
-
+        document.getElementById('status-bar').innerText = "Heard: " + text;
         if (appState === "selecting") {
             if (text.includes("general")) {
                 appState = "charting";
                 document.getElementById('mode-title').innerText = "GENERAL CHARTING";
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance("General Charting confirmed."));
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance("General mode."));
             }
         } else if (appState === "charting") {
-            sendToGemini(text);
+            processAI(text);
         }
     };
 
-    async function sendToGemini(text) {
-        const liveBox = document.getElementById('live-box');
-        const rawBox = document.getElementById('raw-data');
-        liveBox.innerText = "Gemini Analyzing...";
+    async function processAI(text) {
+        const bar = document.getElementById('status-bar');
+        const log = document.getElementById('ai-log');
+        bar.classList.add('thinking');
+        bar.innerText = "Analyzing...";
 
         try {
             const res = await fetch('/api/gemini', {
@@ -135,29 +136,32 @@
                 body: JSON.stringify({ text })
             });
             const data = await res.json();
-            rawBox.innerText = "AI RESPONSE: " + JSON.stringify(data);
+            
+            log.innerText = "AI Response: " + JSON.stringify(data);
+
+            if (data.apiError) {
+                bar.innerText = "API Error: " + data.apiError;
+                bar.classList.add('error');
+                return;
+            }
 
             if (Array.isArray(data)) {
                 data.forEach(item => {
-                    const tid = String(item.id);
-                    if (teethData[tid]) {
-                        if (item.status) teethData[tid].status = item.status;
-                        if (item.surfaces) Object.assign(teethData[tid].surfaces, item.surfaces);
-                        updateUI(tid);
+                    if (teethData[item.id]) {
+                        if (item.status) teethData[item.id].status = item.status;
+                        if (item.surfaces) Object.assign(teethData[item.id].surfaces, item.surfaces);
+                        updateUI(item.id);
                     }
                 });
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance("Recorded."));
-            } else if (data.error) {
-                rawBox.innerText = "API ERROR: " + data.error;
+                bar.innerText = "Ready.";
             }
-        } catch (e) { rawBox.innerText = "Network Error: " + e.message; }
-        liveBox.innerText = "Ready.";
+        } catch (e) { log.innerText = "Error: " + e.message; }
+        bar.classList.remove('thinking');
     }
 
     document.getElementById('start-btn').onclick = () => {
         appState = "selecting";
         document.getElementById('start-btn').innerText = "LISTENING";
-        document.getElementById('start-btn').style.background = "#e74c3c";
         window.speechSynthesis.speak(new SpeechSynthesisUtterance("General or Perio?"));
         try { rec.start(); } catch(e) {}
     };
