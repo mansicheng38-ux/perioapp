@@ -3,9 +3,10 @@ module.exports = async function(req, res) {
     const { text } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    const dash = "\x2d";
-    const model = "gemini" + dash + "1.5" + dash + "flash";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    // 終極防彈橫槓：使用 ASCII 代碼 45 強制生成短橫槓，無視 Mac 自動校正
+    const h = String.fromCharCode(45);
+    const model = "gemini" + h + "1.5" + h + "flash";
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey;
 
     const systemPrompt = `
     You are a dental charting AI. Parse the transcript into a JSON array of actions.
@@ -38,10 +39,8 @@ module.exports = async function(req, res) {
         const data = await response.json();
         if (data.error) return res.status(200).json({ error: data.error.message });
         
-        // 強制淨化字串，去除所有 Markdown 符號
         let aiResult = data.candidates[0].content.parts[0].text;
         aiResult = aiResult.replace(/```json/gi, '').replace(/```/g, '').trim();
-        
         res.status(200).json(JSON.parse(aiResult));
     } catch (error) {
         res.status(200).json({ error: "Parse Error: " + error.message });
