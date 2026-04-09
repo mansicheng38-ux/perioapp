@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio - Instant Pro</title>
+    <title>Voice Perio - Range Pro</title>
     <style>
         :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f4f7f6; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; text-align: center; }
         .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-width: 900px; margin: 0 auto 20px; }
-        .tooth { background: white; border: 1px solid #ddd; padding: 15px 5px; border-radius: 8px; font-weight: bold; height: 55px; display: flex; align-items: center; justify-content: center; position: relative; transition: 0.3s; }
+        .tooth { background: white; border: 1px solid #ddd; padding: 15px 5px; border-radius: 8px; font-weight: bold; height: 55px; display: flex; align-items: center; justify-content: center; position: relative; transition: 0.2s; }
         .tooth.missing { background: #455a64 !important; color: white; opacity: 0.7; }
         .tooth.missing::after { content: '✕'; position: absolute; font-size: 35px; color: rgba(255,0,0,0.5); }
         .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); z-index: 1000; }
-        #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(39,174,96,0.3); }
+        #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
         #live-box { background: #e8f4fd; padding: 10px; border-radius: 8px; color: #2980b9; margin-top: 10px; font-weight: bold; min-height: 24px; font-size: 15px; }
     </style>
 </head>
@@ -25,4 +25,127 @@
 </div>
 
 <div class="grid" id="upper-grid"></div>
-<div class="grid"
+<div class="grid" id="lower-grid"></div>
+
+<div class="controls">
+    <button id="start-btn">Start Session</button>
+</div>
+
+<script>
+    const uIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
+    const lIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
+    const teethData = {};
+
+    window.onload = () => {
+        const draw = (ids, target) => {
+            const el = document.getElementById(target);
+            ids.forEach(id => {
+                teethData[id] = { missing: false };
+                const div = document.createElement('div');
+                div.className = 'tooth'; div.id = `t-${id}`; div.innerText = id;
+                el.appendChild(div);
+            });
+        };
+        draw(uIds, 'upper-grid'); draw(lIds, 'lower-grid');
+    };
+
+    function speak(t) {
+        window.speechSynthesis.cancel();
+        const m = new SpeechSynthesisUtterance(t);
+        m.lang = 'en-US';
+        window.speechSynthesis.speak(m);
+    }
+
+    // 1. Smarter Translation Engine
+    function translateWords(text) {
+        const map = {
+            'one': '1', 'two': '2', 'three': '3', 'four': '4', 'for': '4', 'fore': '4',
+            'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'zero': '0',
+            // Added tens support so "forty five" becomes "4 5"
+            'twenty': '2', 'thirty': '3', 'forty': '4', 'fourty': '4', 'fifty': '5',
+            'eighteen': '18', 'seventeen': '17', 'sixteen': '16', 'fifteen': '15',
+            'fourteen': '14', 'thirteen': '13', 'twelve': '12', 'eleven': '11'
+        };
+        let cleanText = text.replace(/[.,]/g, '');
+        let words = cleanText.split(' ');
+        // Keep spaces between mapped words for the next step!
+        return words.map(w => map[w] || w).join(' ');
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US';
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    rec.onresult = (event) => {
+        let interim = "";
+        let finalStr = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) finalStr += event.results[i][0].transcript + " ";
+            else interim += event.results[i][0].transcript;
+        }
+
+        const liveText = (finalStr + interim).toLowerCase();
+        document.getElementById('live-box').innerText = "Hearing: " + liveText;
+
+        if (liveText.trim()) processVoice(liveText);
+    };
+
+    function processVoice(text) {
+        // Step 1: Turn words into numbers with spaces (e.g., "forty five" -> "4 5")
+        let translated = translateWords(text);
+
+        // Step 2: Condense adjacent single digits! (e.g., "3 5 3 6" -> "3536", "1 3 to 1 5" -> "13 to 15")
+        translated = translated.replace(/(\d)\s+(?=\d)/g, "$1");
+
+        // Step 3: Expand ranges! (e.g., "13 to 15" -> "13 14 15")
+        translated = translated.replace(/(\d{2})\s*(?:to|through|thru|until|-)\s*(\d{2})/g, (match, start, end) => {
+            let s = parseInt(start);
+            let e = parseInt(end);
+            if (s > e) { let temp = s; s = e; e = temp; }
+            let rangeNums = [];
+            for (let i = s; i <= e; i++) {
+                rangeNums.push(i);
+            }
+            return rangeNums.join(" ");
+        });
+        
+        // Step 4: Extract all 2-digit numbers
+        const nums = translated.match(/\d{2}/g); 
+        
+        // Step 5: Check for keywords (ADDED "mission" to catch the typo!)
+        const isMissing = /miss|none|absent|mission/.test(text);
+
+        if (isMissing && nums) {
+            let marked = [];
+            let spokenNums = [];
+
+            nums.forEach(n => {
+                // Check if it's a valid tooth and not already marked
+                if (teethData[n] && !teethData[n].missing) {
+                    teethData[n].missing = true;
+                    document.getElementById(`t-${n}`).classList.add('missing');
+                    marked.push(n);
+                    spokenNums.push(n.split('').join(' ')); 
+                }
+            });
+
+            if(marked.length > 0) {
+                speak(`Recorded ${spokenNums.join(", ")} missing.`);
+            }
+        }
+    }
+
+    document.getElementById('start-btn').onclick = async () => {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            rec.start();
+            document.getElementById('start-btn').innerText = "SYSTEM ACTIVE";
+            document.getElementById('start-btn').style.background = "#e74c3c";
+            speak("Ready. Try saying thirteen to fifteen missing.");
+        } catch (e) { alert("Mic Error: " + e.message); }
+    };
+</script>
+</body>
+</html>
