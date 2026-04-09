@@ -1,118 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Perio Assistant - Final Fix</title>
-    <style>
-        :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f8f9fa; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; padding-bottom: 120px; }
-        .status-bar { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 6px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-weight: bold; position: sticky; top: 0; z-index: 100; }
-        .dental-chart { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-        .arch-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; width: 100%; max-width: 900px; }
-        .tooth-unit { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 5px; text-align: center; min-height: 80px; }
-        .tooth-unit.active { border: 2px solid #f1c40f; background: #fff9c4; }
-        .tooth-unit.missing { opacity: 0.3; background: #eceff1; border-style: dashed; }
-        .tooth-id { font-weight: bold; color: #333; border-bottom: 1px solid #eee; display: block; }
-        .val-txt { font-size: 0.75rem; color: var(--danger); font-weight: bold; }
-        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
-        #start-btn { background: var(--success); color: white; border: none; padding: 15px 40px; border-radius: 30px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
-        #log { font-size: 10px; color: #666; background: #eee; padding: 5px; margin-top: 5px; border-radius: 4px; overflow: hidden; height: 15px; }
-    </style>
-</head>
-<body>
+document.getElementById('start-btn').onclick = async () => {
+    try {
+        alert("Debug: 按鈕已被觸發！"); // 第一步確認：按鈕有沒有壞掉
+        
+        // 檢查瀏覽器是否支援語音
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("錯誤：你的瀏覽器不支援語音辨識功能，請換成 Chrome 或 Safari。");
+            return;
+        }
 
-<div id="status" class="status-bar">STATUS: READY</div>
+        // 檢查麥克風權限
+        alert("Debug: 正在請求麥克風權限...");
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        alert("Debug: 麥克風授權成功！");
 
-<div class="dental-chart">
-    <div class="arch-row" id="upper-arch"></div>
-    <div style="font-size: 10px; color: #ccc;">--- LOWER JAW ---</div>
-    <div class="arch-row" id="lower-arch"></div>
-</div>
+        // 啟動功能
+        recognition.start();
+        document.getElementById('start-btn').innerText = "Recording...";
+        document.getElementById('status').innerText = "Listening...";
+        speak("System online.");
 
-<div class="controls">
-    <button id="start-btn">Start Session</button>
-    <div id="log">Logs will appear here...</div>
-</div>
-
-<script>
-    // --- 1. 資料與 UI 初始化 ---
-    const upperIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
-    const lowerIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
-    const teethData = {};
-
-    function initUI() {
-        const render = (ids, containerId) => {
-            const container = document.getElementById(containerId);
-            if(!container) return;
-            ids.forEach(id => {
-                teethData[id] = { db: "-", dl: "-", missing: false };
-                const div = document.createElement('div');
-                div.className = 'tooth-unit'; div.id = `unit-${id}`;
-                div.innerHTML = `<span class="tooth-id">${id}</span><div class="val-txt" id="db-${id}">B:-</div><div class="val-txt" id="dl-${id}">L:-</div>`;
-                container.appendChild(div);
-            });
-        };
-        render(upperIds, 'upper-arch');
-        render(lowerIds, 'lower-arch');
+    } catch (err) {
+        // 如果失敗，會直接跳出錯誤代碼
+        alert("啟動失敗，錯誤訊息：\n" + err.name + ": " + err.message);
+        console.error(err);
     }
-
-    // --- 2. 語音功能 ---
-    function speak(text) {
-        window.speechSynthesis.cancel();
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'en-US';
-        window.speechSynthesis.speak(msg);
-    }
-
-    // 瀏覽器相容性檢查
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition;
-
-    if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
-        recognition.continuous = true;
-        recognition.interimResults = false;
-    }
-
-    // --- 3. 核心邏輯：批次標記與模式切換 ---
-    let mode = "GENERAL"; 
-
-    if (recognition) {
-        recognition.onresult = (event) => {
-            const text = event.results[event.results.length - 1][0].transcript.toLowerCase();
-            document.getElementById('log').innerText = "Heard: " + text;
-
-            // 模式切換
-            if (text.includes("general charting")) { mode = "GENERAL"; speak("General mode"); return; }
-            if (text.includes("periodontal charting")) { mode = "PERIO"; speak("Periodontal mode"); return; }
-
-            const nums = text.match(/\d+/g);
-
-            // 批次 Missing 邏輯 (支援 "17 16 15 missing")
-            if (mode === "GENERAL" && text.includes("missing") && nums) {
-                nums.forEach(n => {
-                    const id = parseInt(n);
-                    if (teethData[id]) {
-                        teethData[id].missing = true;
-                        document.getElementById(`unit-${id}`).classList.add('missing');
-                    }
-                });
-                speak(`Marked ${nums.length} teeth missing`);
-            }
-        };
-
-        recognition.onerror = (e) => {
-            console.error("Recognition Error:", e.error);
-            document.getElementById('log').innerText = "Error: " + e.error;
-        };
-    }
-
-    // --- 4. 按鈕啟動與錯誤偵錯 ---
-    document.getElementById('start-btn').onclick = async () => {
-        try {
-            document.getElementById('log').innerText = "Initializing...";
-            
-            // 檢查 HTTPS 與 麥克風
-            if (!navigator
+};
