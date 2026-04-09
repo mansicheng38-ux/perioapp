@@ -3,42 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio Pro - Odontogram</title>
+    <title>Voice Perio Pro - Ultimate</title>
     <style>
-        :root { --bg: #f8fafc; --tooth-border: #cbd5e1; }
-        body { font-family: sans-serif; background: var(--bg); text-align: center; padding: 10px; }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; max-width: 1000px; margin: 20px auto 100px; }
+        :root { --primary: #8e44ad; --success: #27ae60; --danger: #e74c3c; --bg: #f8fafc; --tooth-border: #cbd5e1; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; padding: 10px; }
+        .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; max-width: 1000px; margin: 0 auto 100px; }
         
-        /* 牙齒方塊容器 */
-        .tooth-container { display: flex; flex-direction: column; align-items: center; }
+        .tooth-container { display: flex; flex-direction: column; align-items: center; position: relative; }
         .tooth-label { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #475569; }
         
-        /* SVG 牙位圖樣式 */
-        .odontogram { width: 60px; height: 60px; background: white; border: 1px solid var(--tooth-border); border-radius: 4px; }
-        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; cursor: pointer; transition: 0.2s; }
+        .odontogram { width: 60px; height: 60px; background: white; border: 1px solid var(--tooth-border); border-radius: 4px; z-index: 2; }
+        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; transition: 0.2s; }
         
-        /* 顏色定義 */
-        .c-composite { fill: #3498db !important; } /* 樹脂：藍色 */
-        .c-gi { fill: #9b59b6 !important; }        /* GI：紫色 */
-        .c-caries { fill: #e74c3c !important; }    /* 蛀牙：紅色 */
-        .c-abr { fill: #f1c40f !important; }       /* 磨耗：黃色 */
+        .c-composite { fill: #3498db !important; }
+        .c-gi { fill: #9b59b6 !important; }
+        .c-caries { fill: #e74c3c !important; }
+        .c-abrasion { fill: #f1c40f !important; }
         
-        /* 特殊狀態：整顆標記 */
-        .t-missing { opacity: 0.3; background: #e2e8f0; }
-        .t-implant { border: 3px solid #34495e; border-radius: 50%; } /* 植牙：深色圓框 */
-        .t-zirconia { background: #ecf0f1; outline: 3px solid #95a5a6; } /* 鋯冠：灰色外框 */
-        .t-cmc { background: #dcdde1; outline: 3px solid #7f8c8d; }     /* CMC：金屬感外框 */
+        .t-missing .odontogram { opacity: 0.3; background: #e2e8f0; }
+        .t-missing::after { content: '✕'; position: absolute; top: 30px; font-size: 50px; color: rgba(255,0,0,0.5); z-index: 3; }
+        .t-implant .odontogram { border: 3px solid #34495e; border-radius: 50%; }
+        .t-zirconia_crown .odontogram { background: #ecf0f1; outline: 3px solid #95a5a6; }
+        .t-cmc_crown .odontogram { background: #dcdde1; outline: 3px solid #7f8c8d; }
 
-        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
-        #start-btn { padding: 15px 40px; font-size: 18px; border-radius: 30px; border: none; background: #27ae60; color: white; cursor: pointer; font-weight: bold; }
-        #live-box { color: #8e44ad; font-weight: bold; margin-top: 10px; min-height: 20px; }
+        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); z-index: 1000; }
+        #start-btn { padding: 15px 40px; font-size: 18px; border-radius: 30px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        #live-box { background: #f3e5f5; padding: 10px; border-radius: 8px; color: #8e44ad; margin-top: 10px; font-weight: bold; min-height: 24px; font-size: 15px; }
+        .thinking { animation: pulse 1s infinite; background: #ffeaa7 !important; color: #d35400 !important; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h2>DENTAL ODONTOGRAM (VOICE)</h2>
-    <div id="live-box">Waiting for command...</div>
+    <div id="mode-title" style="font-weight: bold; font-size: 20px;">AI MODE: STANDBY</div>
+    <div id="live-box">System Ready. Click Start.</div>
 </div>
 
 <div class="grid" id="upper-grid"></div>
@@ -52,6 +52,9 @@
     const uIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
     const lIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
     const teethData = {};
+    
+    let silenceTimer, accumulatedText = "";
+    let appState = "idle"; // "idle", "selecting_mode", "charting"
 
     window.onload = () => {
         const draw = (ids, target) => {
@@ -78,62 +81,141 @@
         const container = document.getElementById(`container-${id}`);
         const data = teethData[id];
 
-        // 移除所有舊樣式
         container.className = "tooth-container";
-        if (data.status === 'missing') container.classList.add('t-missing');
-        if (data.status === 'implant') container.classList.add('t-implant');
-        if (data.status === 'zirconia_crown') container.classList.add('t-zirconia');
-        if (data.status === 'cmc_crown') container.classList.add('t-cmc');
+        if (data.status !== 'normal') container.classList.add(`t-${data.status}`);
 
-        // 更新表面顏色
-        for (const [surf, condition] of Object.entries(data.surfaces)) {
+        const surfaces = ['B', 'L', 'M', 'D', 'O'];
+        surfaces.forEach(surf => {
             const path = document.getElementById(`${id}-${surf}`);
             if (path) {
-                path.classList.remove('c-composite', 'c-gi', 'c-caries', 'c-abr');
-                if (condition === 'composite') path.classList.add('c-composite');
-                if (condition === 'gi') path.classList.add('c-gi');
-                if (condition === 'caries') path.classList.add('c-caries');
-                if (condition === 'abrasion') path.classList.add('c-abr');
+                path.className.baseVal = "surface"; // Reset SVG class
+                if (data.surfaces[surf]) path.classList.add(`c-${data.surfaces[surf]}`);
             }
-        }
+        });
     }
 
-    // 語音核心 (與之前相同，僅處理邏輯改變)
+    function speak(t) {
+        window.speechSynthesis.cancel();
+        const m = new SpeechSynthesisUtterance(t);
+        m.lang = 'en-US';
+        m.rate = 1.1; 
+        window.speechSynthesis.speak(m);
+    }
+
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
 
-    rec.onresult = async (event) => {
-        let text = "";
+    rec.onresult = (event) => {
+        let interim = "", finalStr = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) text = event.results[i][0].transcript;
+            if (event.results[i].isFinal) finalStr += event.results[i][0].transcript + " ";
+            else interim += event.results[i][0].transcript;
         }
 
-        if (text) {
-            document.getElementById('live-box').innerText = "Analyzing: " + text;
-            try {
-                const response = await fetch('/api/gemini', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
-                });
-                const aiData = await response.json();
-                
-                for (const [id, info] of Object.entries(aiData)) {
-                    if (teethData[id]) {
-                        if (info.status) teethData[id].status = info.status;
-                        if (info.surfaces) {
-                            Object.assign(teethData[id].surfaces, info.surfaces);
-                        }
-                        updateToothUI(id);
+        const currentText = (accumulatedText + finalStr + interim).toLowerCase();
+        const liveBox = document.getElementById('live-box');
+        if (!liveBox.classList.contains('thinking')) liveBox.innerText = "Hearing: " + currentText;
+
+        clearTimeout(silenceTimer);
+        // 縮短到 800 毫秒，感覺更即時！
+        silenceTimer = setTimeout(() => {
+            if (currentText.trim()) {
+                if (appState === "selecting_mode") {
+                    if (currentText.includes("general")) {
+                        appState = "charting";
+                        document.getElementById('mode-title').innerText = "AI MODE: GENERAL CHARTING";
+                        speak("General charting selected. Describe conditions.");
+                    } else if (currentText.includes("perio")) {
+                        appState = "charting";
+                        document.getElementById('mode-title').innerText = "AI MODE: PERIO CHARTING";
+                        speak("Perio charting selected. Describe conditions.");
+                    } else {
+                        speak("Say General or Perio.");
                     }
+                } else if (appState === "charting") {
+                    sendToGemini(currentText);
                 }
-            } catch (e) { console.error(e); }
-        }
+                accumulatedText = ""; 
+            }
+        }, 800); 
     };
 
-    document.getElementById('start-btn').onclick = () => {
-        rec.start();
-        document.getElementById('start-btn').innerText = "LISTENING...";
+    async function sendToGemini(text) {
+        const liveBox = document.getElementById('live-box');
+        liveBox.classList.add('thinking');
+        liveBox.innerText = "Gemini is charting...";
+
+        try {
+            const response = await fetch('/api/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+            
+            const aiData = await response.json(); 
+            liveBox.classList.remove('thinking');
+            let spokenPhrases = [];
+
+            for (const [id, info] of Object.entries(aiData)) {
+                if (teethData[id]) {
+                    let hasUpdate = false;
+                    
+                    if (info.status && teethData[id].status !== info.status) {
+                        teethData[id].status = info.status;
+                        hasUpdate = true;
+                    }
+                    if (info.surfaces) {
+                        for (const [surf, cond] of Object.entries(info.surfaces)) {
+                            if (teethData[id].surfaces[surf] !== cond) {
+                                teethData[id].surfaces[surf] = cond;
+                                hasUpdate = true;
+                            }
+                        }
+                    }
+
+                    if (hasUpdate) {
+                        updateToothUI(id);
+                        
+                        // 建立覆誦文字
+                        const spokenId = id.toString().split('').join(' '); // 14 變成 "1 4"
+                        let actions = [];
+                        if (info.status) actions.push(info.status.replace('_', ' '));
+                        if (info.surfaces) {
+                            const surfs = Object.keys(info.surfaces).join('');
+                            const conds = [...new Set(Object.values(info.surfaces))].join(' and ');
+                            if (surfs) actions.push(`${surfs} ${conds}`);
+                        }
+                        spokenPhrases.push(`tooth ${spokenId} ${actions.join(' ')}`);
+                    }
+                }
+            }
+
+            if (spokenPhrases.length > 0) {
+                liveBox.innerText = "Charting updated.";
+                speak(`Recorded: ${spokenPhrases.join(", ")}`);
+            } else {
+                liveBox.innerText = "No new changes detected.";
+            }
+        } catch (error) {
+            liveBox.classList.remove('thinking');
+            liveBox.innerText = "Network Error.";
+        }
+    }
+
+    document.getElementById('start-btn').onclick = async () => {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            rec.start();
+            
+            appState = "selecting_mode";
+            document.getElementById('mode-title').innerText = "SELECTING MODE...";
+            document.getElementById('start-btn').innerText = "SYSTEM ACTIVE";
+            document.getElementById('start-btn').style.background = "#e74c3c";
+            
+            speak("General Charting, or Perio Charting?");
+            document.getElementById('live-box').innerText = "Waiting for you to say 'General' or 'Perio'...";
+            
+        } catch (e) { alert("Mic Error: " + e.message); }
     };
 </script>
 </body>
