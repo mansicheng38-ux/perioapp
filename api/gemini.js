@@ -9,13 +9,14 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 systemInstruction: {
-                    parts: [{ text: `You are a dental charting expert. 
+                    parts: [{ text: `You are a dental data extractor. 
 RULES:
-1. Return a JSON ARRAY of objects. Each object must have "id" (2-digit string).
-2. "status": "missing", "implant", "zirconia_crown", "cmc_crown".
-3. "surfaces": map surface codes like "MO" to {"M": "composite", "O": "composite"}.
-4. Handle lists: "14 15 missing" -> [{"id":"14","status":"missing"},{"id":"15","status":"missing"}]
-Return ONLY the JSON array.` }]
+1. Return a JSON ARRAY of objects. 
+2. id: string (e.g., "14").
+3. status: "missing", "implant", "zirconia_crown", "cmc_crown".
+4. surfaces: object (e.g., {"O":"composite"}).
+Input: "14 15 missing" -> [{"id":"14","status":"missing"},{"id":"15","status":"missing"}]
+Return ONLY JSON.` }]
                 },
                 contents: [{ parts: [{ text: text }] }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
