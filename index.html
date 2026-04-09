@@ -1,128 +1,55 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio Pro HK</title>
-    <style>
-        :root { --primary: #3498db; --danger: #e74c3c; --bg: #f4f7f6; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; text-align: center; }
-        .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid var(--primary); }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-width: 900px; margin: 0 auto 20px; }
-        .tooth { background: white; border: 1px solid #ddd; padding: 15px 5px; border-radius: 8px; font-weight: bold; height: 50px; display: flex; align-items: center; justify-content: center; position: relative; }
-        .tooth.missing { background: #455a64 !important; color: white; }
-        .tooth.missing::after { content: '✕'; position: absolute; font-size: 35px; color: rgba(255,0,0,0.5); }
-        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
-        #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 40px; border: none; background: #27ae60; color: white; cursor: pointer; font-weight: bold; }
-        /* 增加明顯的文字反饋區 */
-        #live-box { background: #e8f4fd; padding: 10px; border-radius: 8px; color: #2980b9; margin-top: 10px; font-weight: bold; min-height: 24px; }
-    </style>
-</head>
-<body>
-
-<div class="header">
-    <div style="font-weight: bold; font-size: 18px;">模式：一般檢查 (廣東話數字優化)</div>
-    <div id="live-box">請點擊開始</div>
-</div>
-
-<div class="grid" id="upper-grid"></div>
-<div class="grid" id="lower-grid"></div>
-
-<div class="controls">
-    <button id="start-btn">開始檢查 (Start)</button>
-</div>
-
-<script>
-    const uIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
-    const lIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
-    const teethData = {};
-    let silenceTimer, accumulatedText = "";
-
-    window.onload = () => {
-        const draw = (ids, target) => {
-            const el = document.getElementById(target);
-            ids.forEach(id => {
-                teethData[id] = { missing: false };
-                const div = document.createElement('div');
-                div.className = 'tooth'; div.id = `t-${id}`; div.innerText = id;
-                el.appendChild(div);
-            });
-        };
-        draw(uIds, 'upper-grid'); draw(lIds, 'lower-grid');
+// --- 核心：語音對照表，處理廣東話聽錯做英文嘅情況 ---
+function fixCantonesePhonetics(text) {
+    let fixed = text.toLowerCase();
+    
+    // 解決常見誤判：將聽錯嘅英文轉返做廣東話數字
+    const phoneticMap = {
+        'yellow': '16',   // 「一六」最常被聽錯做 yellow
+        'hello': '16',    // 另一種常見誤判
+        'sixteen': '16',
+        'low': '6',
+        'chat': '7',      // 「七」常被聽成 chat
+        'easy': '2',      // 「二」常被聽成 easy
+        'say': '4'        // 「四」常被聽成 say
     };
 
-    function speak(t) {
-        window.speechSynthesis.cancel();
-        const m = new SpeechSynthesisUtterance(t);
-        m.lang = 'zh-HK';
-        window.speechSynthesis.speak(m);
+    for (let key in phoneticMap) {
+        fixed = fixed.replace(new RegExp(key, 'g'), phoneticMap[key]);
     }
 
-    // --- 強化版廣東話數字處理 ---
-    function parseCantoneseNumbers(text) {
-        const map = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'零':0,'十':1};
-        // 處理常見聽錯字：將「路/落」修正為「六」
-        let fixed = text.replace(/路|落/g, '六').replace(/衣|伊/g, '一');
-        let result = "";
-        for (let char of fixed) {
-            result += map[char] !== undefined ? map[char] : char;
-        }
-        return result;
+    // 處理中文數字
+    const cnMap = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'零':0};
+    for (let key in cnMap) {
+        fixed = fixed.replace(new RegExp(key, 'g'), cnMap[key]);
     }
+    
+    // 修正廣東話特有聽錯字
+    fixed = fixed.replace(/路|落|錄/g, '6').replace(/衣|伊|醫/g, '1');
+    
+    return fixed;
+}
 
-    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    rec.lang = 'zh-HK';
-    rec.continuous = true;
-    rec.interimResults = true;
+// 修改後的 processData function
+function processData(text) {
+    let processed = fixCantonesePhonetics(text);
+    console.log("修正後文字:", processed);
 
-    rec.onresult = (event) => {
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) accumulatedText += event.results[i][0].transcript;
-            else interim += event.results[i][0].transcript;
-        }
+    // 抓取所有數字 (例如 16, 17)
+    const nums = processed.match(/\d{2}/g); 
+    
+    // 廣東話缺失關鍵字
+    const isMissing = /缺失|冇|唔見|甩|蚊|missing|none/.test(processed);
 
-        const currentText = (accumulatedText + interim);
-        document.getElementById('live-box').innerText = "聽緊: " + currentText;
-
-        clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(() => {
-            if (currentText.trim()) processData(currentText);
-            accumulatedText = "";
-        }, 2000); 
-    };
-
-    function processData(text) {
-        let processed = parseCantoneseNumbers(text);
-        const nums = processed.match(/\d{2}/g); // 抓取兩位數的牙位
-        
-        // 擴大關鍵字範圍
-        const isMissing = /缺失|冇|唔見|甩|蚊|missing/.test(text);
-
-        if (isMissing && nums) {
-            let marked = [];
-            nums.forEach(n => {
-                if (teethData[n]) {
-                    teethData[n].missing = true;
-                    document.getElementById(`t-${n}`).classList.add('missing');
-                    marked.push(n);
-                }
-            });
-            if(marked.length > 0) {
-                speak(`紀錄完畢，${marked.join(", ")}號缺失`);
+    if (isMissing && nums) {
+        nums.forEach(n => {
+            if (teethData[n]) {
+                teethData[n].missing = true;
+                document.getElementById(`t-${n}`).classList.add('missing');
             }
-        }
+        });
+        speak(`紀錄完畢，${nums.join(", ")}號缺失`);
+    } else if (nums) {
+        // 如果聽到數字但冇關鍵字，比個提示
+        speak(`聽到數字 ${nums.join(" ")}, 請講埋缺失`);
     }
-
-    document.getElementById('start-btn').onclick = async () => {
-        try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
-            rec.start();
-            document.getElementById('start-btn').innerText = "系統運行中...";
-            document.getElementById('start-btn').style.background = "#e74c3c";
-            speak("已啟動");
-        } catch (e) { alert(e.message); }
-    };
-</script>
-</body>
-</html>
+}
