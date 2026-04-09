@@ -3,41 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio - Full Charting</title>
+    <title>Voice Perio Pro - Odontogram</title>
     <style>
-        :root { --primary: #8e44ad; --success: #27ae60; --bg: #f4f7f6; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; text-align: center; }
-        .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-width: 950px; margin: 0 auto 20px; }
+        :root { --bg: #f8fafc; --tooth-border: #cbd5e1; }
+        body { font-family: sans-serif; background: var(--bg); text-align: center; padding: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; max-width: 1000px; margin: 20px auto 100px; }
         
-        /* 牙齒格子升級：可以容納標籤 */
-        .tooth { background: white; border: 1px solid #ddd; border-radius: 8px; height: 75px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; position: relative; transition: 0.3s; padding-top: 8px; overflow: hidden; }
-        .t-num { font-weight: bold; font-size: 16px; margin-bottom: 4px; z-index: 2; }
-        .badges { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; width: 100%; padding: 0 2px; z-index: 2; }
+        /* 牙齒方塊容器 */
+        .tooth-container { display: flex; flex-direction: column; align-items: center; }
+        .tooth-label { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #475569; }
         
-        /* 標籤樣式 */
-        .badge { font-size: 10px; font-weight: bold; padding: 2px 4px; border-radius: 4px; color: white; }
-        .b-comp { background: #3498db; } /* 樹脂：藍色 */
-        .b-gi { background: #9b59b6; }   /* 玻璃離子：紫色 */
-        .b-abr { background: #e67e22; }  /* 磨耗：橘色 */
-        .b-caries { background: #e74c3c; } /* 蛀牙：紅色 */
+        /* SVG 牙位圖樣式 */
+        .odontogram { width: 60px; height: 60px; background: white; border: 1px solid var(--tooth-border); border-radius: 4px; }
+        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; cursor: pointer; transition: 0.2s; }
         
-        /* 缺失樣式保留 */
-        .tooth.missing { opacity: 0.6; background: #bdc3c7; }
-        .tooth.missing::after { content: '✕'; position: absolute; top: 15px; font-size: 40px; color: rgba(255,0,0,0.4); z-index: 1; }
+        /* 顏色定義 */
+        .c-composite { fill: #3498db !important; } /* 樹脂：藍色 */
+        .c-gi { fill: #9b59b6 !important; }        /* GI：紫色 */
+        .c-caries { fill: #e74c3c !important; }    /* 蛀牙：紅色 */
+        .c-abr { fill: #f1c40f !important; }       /* 磨耗：黃色 */
         
-        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); z-index: 1000; }
-        #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
-        #live-box { background: #f3e5f5; padding: 10px; border-radius: 8px; color: #8e44ad; margin-top: 10px; font-weight: bold; min-height: 24px; font-size: 15px; }
-        .thinking { animation: pulse 1.5s infinite; background: #ffeaa7 !important; color: #d35400 !important; }
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        /* 特殊狀態：整顆標記 */
+        .t-missing { opacity: 0.3; background: #e2e8f0; }
+        .t-implant { border: 3px solid #34495e; border-radius: 50%; } /* 植牙：深色圓框 */
+        .t-zirconia { background: #ecf0f1; outline: 3px solid #95a5a6; } /* 鋯冠：灰色外框 */
+        .t-cmc { background: #dcdde1; outline: 3px solid #7f8c8d; }     /* CMC：金屬感外框 */
+
+        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
+        #start-btn { padding: 15px 40px; font-size: 18px; border-radius: 30px; border: none; background: #27ae60; color: white; cursor: pointer; font-weight: bold; }
+        #live-box { color: #8e44ad; font-weight: bold; margin-top: 10px; min-height: 20px; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div id="mode-title" style="font-weight: bold; font-size: 20px;">AI MODE: OMNI CHARTING</div>
-    <div id="live-box">System Ready. Click Start.</div>
+    <h2>DENTAL ODONTOGRAM (VOICE)</h2>
+    <div id="live-box">Waiting for command...</div>
 </div>
 
 <div class="grid" id="upper-grid"></div>
@@ -50,126 +51,89 @@
 <script>
     const uIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
     const lIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
-    
-    // 升級資料庫：現在每顆牙齒可以同時擁有多種狀態
     const teethData = {};
-    
+
     window.onload = () => {
         const draw = (ids, target) => {
             const el = document.getElementById(target);
             ids.forEach(id => {
-                teethData[id] = { missing: false, conditions: new Set() };
-                const div = document.createElement('div');
-                div.className = 'tooth'; 
-                div.id = `t-${id}`; 
-                div.innerHTML = `<div class="t-num">${id}</div><div class="badges" id="b-${id}"></div>`;
-                el.appendChild(div);
+                teethData[id] = { status: 'normal', surfaces: {} };
+                el.innerHTML += `
+                <div class="tooth-container" id="container-${id}">
+                    <div class="tooth-label">${id}</div>
+                    <svg class="odontogram" id="svg-${id}" viewBox="0 0 100 100">
+                        <path id="${id}-B" class="surface" d="M0 0 L100 0 L75 25 L25 25 Z" />
+                        <path id="${id}-L" class="surface" d="M0 100 L100 100 L75 75 L25 75 Z" />
+                        <path id="${id}-M" class="surface" d="M0 0 L25 25 L25 75 L0 100 Z" />
+                        <path id="${id}-D" class="surface" d="M100 0 L75 25 L75 75 L100 100 Z" />
+                        <rect id="${id}-O" class="surface" x="25" y="25" width="50" height="50" />
+                    </svg>
+                </div>`;
             });
         };
         draw(uIds, 'upper-grid'); draw(lIds, 'lower-grid');
     };
 
-    function speak(t) {
-        window.speechSynthesis.cancel();
-        const m = new SpeechSynthesisUtterance(t);
-        m.lang = 'en-US';
-        window.speechSynthesis.speak(m);
-    }
-
-    // 負責將資料畫到畫面上的核心函數
-    function renderTooth(id) {
-        const toothEl = document.getElementById(`t-${id}`);
-        const badgeContainer = document.getElementById(`b-${id}`);
+    function updateToothUI(id) {
+        const container = document.getElementById(`container-${id}`);
         const data = teethData[id];
 
-        // 處理缺失
-        if (data.missing) toothEl.classList.add('missing');
-        else toothEl.classList.remove('missing');
+        // 移除所有舊樣式
+        container.className = "tooth-container";
+        if (data.status === 'missing') container.classList.add('t-missing');
+        if (data.status === 'implant') container.classList.add('t-implant');
+        if (data.status === 'zirconia_crown') container.classList.add('t-zirconia');
+        if (data.status === 'cmc_crown') container.classList.add('t-cmc');
 
-        // 處理標籤
-        badgeContainer.innerHTML = "";
-        data.conditions.forEach(cond => {
-            if (cond === 'composite') badgeContainer.innerHTML += `<span class="badge b-comp">COMP</span>`;
-            if (cond === 'gi') badgeContainer.innerHTML += `<span class="badge b-gi">GI</span>`;
-            if (cond === 'abrasion') badgeContainer.innerHTML += `<span class="badge b-abr">ABR</span>`;
-            if (cond === 'caries') badgeContainer.innerHTML += `<span class="badge b-caries">DECAY</span>`;
-        });
+        // 更新表面顏色
+        for (const [surf, condition] of Object.entries(data.surfaces)) {
+            const path = document.getElementById(`${id}-${surf}`);
+            if (path) {
+                path.classList.remove('c-composite', 'c-gi', 'c-caries', 'c-abr');
+                if (condition === 'composite') path.classList.add('c-composite');
+                if (condition === 'gi') path.classList.add('c-gi');
+                if (condition === 'caries') path.classList.add('c-caries');
+                if (condition === 'abrasion') path.classList.add('c-abr');
+            }
+        }
     }
 
-    let silenceTimer, accumulatedText = "";
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const rec = new SpeechRecognition();
+    // 語音核心 (與之前相同，僅處理邏輯改變)
+    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
 
-    rec.onresult = (event) => {
-        let interim = "", finalStr = "";
+    rec.onresult = async (event) => {
+        let text = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) finalStr += event.results[i][0].transcript + " ";
-            else interim += event.results[i][0].transcript;
+            if (event.results[i].isFinal) text = event.results[i][0].transcript;
         }
 
-        const currentText = (accumulatedText + finalStr + interim).toLowerCase();
-        const liveBox = document.getElementById('live-box');
-        if (!liveBox.classList.contains('thinking')) liveBox.innerText = "Hearing: " + currentText;
-
-        clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(() => {
-            if (currentText.trim()) {
-                sendToGemini(currentText);
-                accumulatedText = ""; 
-            }
-        }, 1500); 
+        if (text) {
+            document.getElementById('live-box').innerText = "Analyzing: " + text;
+            try {
+                const response = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const aiData = await response.json();
+                
+                for (const [id, info] of Object.entries(aiData)) {
+                    if (teethData[id]) {
+                        if (info.status) teethData[id].status = info.status;
+                        if (info.surfaces) {
+                            Object.assign(teethData[id].surfaces, info.surfaces);
+                        }
+                        updateToothUI(id);
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
     };
 
-    async function sendToGemini(text) {
-        const liveBox = document.getElementById('live-box');
-        liveBox.classList.add('thinking');
-        liveBox.innerText = "Gemini is charting conditions...";
-
-        try {
-            const response = await fetch('/api/gemini', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text })
-            });
-            
-            const aiData = await response.json(); // Expected: {"14":["composite"], "46":["missing"]}
-            liveBox.classList.remove('thinking');
-
-            let updatedCount = 0;
-
-            // 解析 Gemini 傳回來的結構化字典
-            for (const [toothNum, conditions] of Object.entries(aiData)) {
-                if (teethData[toothNum]) {
-                    conditions.forEach(cond => {
-                        if (cond === 'missing') teethData[toothNum].missing = true;
-                        else teethData[toothNum].conditions.add(cond);
-                    });
-                    renderTooth(toothNum); // 更新畫面
-                    updatedCount++;
-                }
-            }
-
-            if (updatedCount > 0) {
-                liveBox.innerText = "Charting updated.";
-                speak("Recorded.");
-            } else {
-                liveBox.innerText = "No findings recorded.";
-            }
-        } catch (error) {
-            liveBox.classList.remove('thinking');
-            liveBox.innerText = "Network Error.";
-        }
-    }
-
-    document.getElementById('start-btn').onclick = async () => {
-        try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
-            rec.start();
-            document.getElementById('start-btn').innerText = "SYSTEM ACTIVE";
-            document.getElementById('start-btn').style.background = "#e74c3c";
-            speak("Omni charting online. Dictate all conditions.");
-        } catch (e) { alert("Mic Error: " + e.message); }
+    document.getElementById('start-btn').onclick = () => {
+        rec.start();
+        document.getElementById('start-btn').innerText = "LISTENING...";
     };
 </script>
 </body>
