@@ -3,64 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Dental Chart - Final Local</title>
+    <title>Voice Dental Chart - Final Stable</title>
     <style>
-        :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f8fafc; --divider: rgba(52, 152, 219, 0.6); }
+        :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f8fafc; --divider: rgba(52, 152, 219, 0.7); }
         body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; margin: 0; padding: 0; }
         
-        .header { background: white; padding: 20px; border-bottom: 4px solid var(--primary); }
-        
-        /* 象限佈局：18-11 在左側 */
+        /* 頁首狀態列 */
+        .header { background: white; padding: 20px; border-bottom: 4px solid var(--primary); position: sticky; top: 0; z-index: 1001; }
+        #live-box { background: #1e293b; color: #38bdf8; padding: 15px; border-radius: 10px; margin-top: 10px; font-weight: bold; font-family: monospace; }
+
+        /* 十字象限線 */
         .chart-wrapper { 
-            position: relative; max-width: 1050px; margin: 20px auto; 
-            background: white; padding: 50px 20px; border-radius: 12px; 
-            box-shadow: 0 5px 25px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 70px;
+            position: relative; max-width: 1100px; margin: 30px auto; 
+            background: white; padding: 60px 20px; border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 80px;
         }
         .v-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: var(--divider); transform: translateX(-50%); z-index: 1; }
         .h-line { position: absolute; left: 0; right: 0; top: 50%; height: 4px; background: var(--divider); transform: translateY(-50%); z-index: 1; }
 
-        .row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 8px; position: relative; z-index: 2; }
+        /* 牙齒網格：左側 18-11/48-41 */
+        .row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 10px; position: relative; z-index: 2; }
         .tooth-container { display: flex; flex-direction: column; align-items: center; }
-        .tooth-label { font-weight: bold; font-size: 14px; margin-bottom: 6px; color: #334155; }
-        .odontogram { width: 48px; height: 48px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; position: relative; }
+        .tooth-label { font-weight: bold; font-size: 15px; margin-bottom: 8px; color: #1e293b; }
         
-        /* 材質樣式 */
+        .odontogram { width: 50px; height: 50px; background: white; border: 2px solid #cbd5e1; border-radius: 5px; position: relative; }
         .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; }
-        .c-composite { fill: #3498db !important; }
-        .c-gi { fill: #9b59b6 !important; }
-
-        /* 紅色大叉叉 */
-        .missing-x { display: none; position: absolute; top: 0; left: 0; width: 48px; height: 48px; pointer-events: none; z-index: 10; }
+        
+        /* 缺失標記 (紅色大叉叉) */
+        .missing-x { display: none; position: absolute; top: 0; left: 0; width: 50px; height: 50px; pointer-events: none; z-index: 10; }
         .t-missing .missing-x { display: block; }
         .t-missing .odontogram { opacity: 0.2; }
 
+        /* 控制按鈕 */
         .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 30px; border-top: 2px solid #e2e8f0; z-index: 1000; }
-        #start-btn { padding: 18px 80px; font-size: 22px; border-radius: 60px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        
-        /* 偵錯日誌框 */
-        #debug-log { background: #1e293b; color: #38bdf8; padding: 15px; margin: 10px auto; max-width: 900px; border-radius: 10px; font-family: monospace; font-size: 14px; text-align: left; min-height: 50px; }
-        .listening { background: #fee2e2 !important; color: #b91c1c !important; border: 2px solid #f87171; }
+        #start-btn { padding: 20px 100px; font-size: 24px; border-radius: 60px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: 900; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: 0.2s; }
+        #start-btn:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div style="font-weight: 900; font-size: 26px;">CLINICAL CHARTING (STABLE)</div>
-    <div id="debug-log">SYSTEM: Waiting for Start...</div>
+    <div id="mode-title" style="font-weight: 900; font-size: 28px; color: #1e293b;">STANDBY</div>
+    <div id="live-box">CLICK START TO BEGIN</div>
 </div>
 
 <div class="chart-wrapper">
     <div class="v-line"></div><div class="h-line"></div>
-    <div class="row" id="u-grid"></div> <div class="row" id="l-grid"></div> </div>
+    
+    <div class="row" id="upper-grid"></div>
+    
+    <div class="row" id="lower-grid"></div>
+</div>
 
 <div class="controls">
-    <button id="start-btn" onclick="toggleMic()">START SESSION</button>
+    <button id="start-btn" onclick="toggleSession()">START SESSION</button>
 </div>
 
 <script>
-    const uIds = ["18","17","16","15","14","13","12","11","21","22","23","24","25","26","27","28"];
-    const lIds = ["48","47","46","45","44","43","42","41","31","32","33","34","35","36","37","38"];
+    // 嚴格定義成人牙齒 (FDI)
+    const uIds = ["18","17","16","15","14","13","12","11", "21","22","23","24","25","26","27","28"];
+    const lIds = ["48","47","46","45","44","43","42","41", "31","32","33","34","35","36","37","38"];
+    
     const teethData = {};
+    let appState = "idle"; // idle, selecting, charting
 
     window.onload = () => {
         const render = (ids, target) => {
@@ -70,7 +75,7 @@
                 el.innerHTML += `
                 <div class="tooth-container" id="container-${id}">
                     <div class="tooth-label">${id}</div>
-                    <div style="position:relative; width:48px; height:48px;">
+                    <div style="position:relative; width:50px; height:50px;">
                         <svg class="odontogram" viewBox="0 0 100 100">
                             <path id="${id}-B" class="surface" d="M0 0 L100 0 L75 25 L25 25 Z" />
                             <path id="${id}-L" class="surface" d="M0 100 L100 100 L75 75 L25 75 Z" />
@@ -78,55 +83,82 @@
                             <path id="${id}-D" class="surface" d="M100 0 L75 25 L75 75 L100 100 Z" />
                             <rect id="${id}-O" class="surface" x="25" y="25" width="50" height="50" />
                         </svg>
-                        <svg class="missing-x" viewBox="0 0 100 100"><line x1="0" y1="0" x2="100" y2="100" stroke="red" stroke-width="12" /><line x1="100" y1="0" x2="0" y2="100" stroke="red" stroke-width="12" /></svg>
+                        <svg class="missing-x" viewBox="0 0 100 100">
+                            <line x1="0" y1="0" x2="100" y2="100" stroke="red" stroke-width="12" />
+                            <line x1="100" y1="0" x2="0" y2="100" stroke="red" stroke-width="12" />
+                        </svg>
                     </div>
                 </div>`;
             });
         };
-        render(uIds, 'u-grid'); render(lIds, 'l-grid');
+        render(uIds, 'upper-grid'); render(lIds, 'lower-grid');
     };
 
-    function log(msg, color="#38bdf8") {
-        const logEl = document.getElementById('debug-log');
-        logEl.innerHTML = `<span style="color:${color}">${msg}</span>`;
+    function speak(t) {
+        window.speechSynthesis.cancel();
+        const m = new SpeechSynthesisUtterance(t);
+        m.lang = 'en-US';
+        window.speechSynthesis.speak(m);
     }
 
-    function processText(rawText) {
-        let t = rawText.toLowerCase().trim();
-        log("Heard: " + t);
+    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    rec.lang = 'en-US'; rec.continuous = true;
 
-        // 1. 語音數字處理 (映射所有可能聽到的格式)
-        const mappings = {
-            "one one": "11", "eleven": "11", "one 1": "11", "1 1": "11",
-            "one two": "12", "twelve": "12", "one three": "13", "one four": "14",
-            "one eight": "18", "four eight": "48", "four one": "41"
-        };
-        for (let key in mappings) { t = t.replace(new RegExp(key, 'g'), mappings[key]); }
+    rec.onresult = (event) => {
+        const text = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+        document.getElementById('live-box').innerText = "HEARD: " + text;
 
-        // 2. 缺失狀態處理 (容錯)
-        let isMissing = false;
-        if (t.includes("missing") || t.includes("nissan") || t.includes("won't fall") || t.includes("listen") || t.includes("mising")) {
-            isMissing = true;
+        if (appState === "selecting") {
+            if (text.includes("general")) {
+                appState = "charting";
+                document.getElementById('mode-title').innerText = "GENERAL CHARTING";
+                speak("General mode confirmed.");
+            } else if (text.includes("perio")) {
+                appState = "charting";
+                document.getElementById('mode-title').innerText = "PERIO CHARTING";
+                speak("Perio mode confirmed.");
+            }
+        } else if (appState === "charting") {
+            processCharting(text);
         }
+    };
 
-        // 3. 尋找 FDI 編號 (11-48)
-        const match = t.match(/\b(1[1-8]|2[1-8]|3[1-8]|4[1-8])\b/g);
+    function processCharting(t) {
+        // 數字語音映射
+        const words = t.replace("one one", "11").replace("eleven", "11").replace("one four", "14").replace("one eight", "18").replace("four eight", "48");
         
-        if (match) {
-            match.forEach(id => {
-                if (isMissing) {
-                    teethData[id].status = "missing";
-                    log(`ACTION: Tooth ${id} marked MISSING`, "#27ae60");
-                }
-                
-                // 材質檢測
-                if (t.includes("composite") || t.includes("resin")) {
-                    ["b","l","m","d","o"].forEach(s => {
-                        if (t.includes(" " + s) || t.endsWith(" " + s)) teethData[id].surfaces[s.toUpperCase()] = "composite";
-                    });
-                }
-                updateUI(id);
-            });
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance("Updated"));
+        // 抓取牙齒編號 (11-48)
+        const match = words.match(/\b([1-4][1-8])\b/g);
+        if (!match) return;
+
+        match.forEach(id => {
+            // 缺失邏輯 (針對你的口音優化：Nissan, Listen, Fall 均判定為缺失)
+            if (words.includes("missing") || words.includes("nissan") || words.includes("listen") || words.includes("fall") || words.includes("missed")) {
+                teethData[id].status = "missing";
+                const container = document.getElementById(`container-${id}`);
+                if (container) container.classList.add('t-missing');
+                speak("Tooth " + id + " missing.");
+            }
+        });
+    }
+
+    function toggleSession() {
+        const btn = document.getElementById('start-btn');
+        if (appState === "idle") {
+            try {
+                rec.start();
+                appState = "selecting";
+                btn.innerText = "STOP SESSION";
+                btn.style.background = "#e74c3c";
+                document.getElementById('live-box').innerText = "LISTENING: Say 'General' or 'Perio'";
+                speak("General or Perio?");
+            } catch (e) {
+                alert("Mic Error: " + e.message);
+            }
         } else {
-            log(
+            location.reload(); // 停止時直接重置，最穩定
+        }
+    }
+</script>
+</body>
+</html>
