@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio - Smart English Pro</title>
+    <title>Voice Perio - Safe Mode Pro</title>
     <style>
         :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f4f7f6; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; text-align: center; }
@@ -12,8 +12,9 @@
         .tooth { background: white; border: 1px solid #ddd; padding: 15px 5px; border-radius: 8px; font-weight: bold; height: 55px; display: flex; align-items: center; justify-content: center; position: relative; transition: 0.3s; }
         .tooth.missing { background: #455a64 !important; color: white; opacity: 0.7; }
         .tooth.missing::after { content: '✕'; position: absolute; font-size: 35px; color: rgba(255,0,0,0.5); }
-        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
+        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); z-index: 1000; }
         #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        #start-btn:disabled { background: #95a5a6; cursor: not-allowed; }
         #live-box { background: #e8f4fd; padding: 10px; border-radius: 8px; color: #2980b9; margin-top: 10px; font-weight: bold; min-height: 24px; font-size: 15px; }
     </style>
 </head>
@@ -21,7 +22,7 @@
 
 <div class="header">
     <div style="font-weight: bold; font-size: 20px;">MODE: GENERAL CHARTING</div>
-    <div id="live-box">Listening for teeth (e.g., "one four missing")...</div>
+    <div id="live-box">Checking System Status...</div>
 </div>
 
 <div class="grid" id="upper-grid"></div>
@@ -37,6 +38,7 @@
     const teethData = {};
     let silenceTimer, accumulatedText = "";
 
+    // 1. Draw the UI
     window.onload = () => {
         const draw = (ids, target) => {
             const el = document.getElementById(target);
@@ -57,74 +59,8 @@
         window.speechSynthesis.speak(m);
     }
 
-    // --- NEW: Word-to-Digit Translator ---
+    // --- Word to Digit Translator ---
     function translateWords(text) {
         const map = {
             'one': '1', 'two': '2', 'three': '3', 'four': '4', 'for': '4', 'fore': '4',
-            'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'zero': '0',
-            'to': '2', 'too': '2', 'eighteen': '18', 'seventeen': '17', 'sixteen': '16'
-        };
-        let words = text.split(' ');
-        let processed = words.map(w => map[w] || w).join(''); // Join digits together
-        return processed;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const rec = new SpeechRecognition();
-    rec.lang = 'en-US';
-    rec.continuous = true;
-    rec.interimResults = true;
-
-    rec.onresult = (event) => {
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) accumulatedText += event.results[i][0].transcript + " ";
-            else interim += event.results[i][0].transcript;
-        }
-
-        const currentText = (accumulatedText + interim).toLowerCase();
-        document.getElementById('live-box').innerText = "Hearing: " + currentText;
-
-        clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(() => {
-            if (currentText.trim()) {
-                processVoice(currentText);
-                accumulatedText = ""; 
-            }
-        }, 2000); 
-    };
-
-    function processVoice(text) {
-        // Translate "one for" into "14"
-        const translated = translateWords(text);
-        console.log("Translated string:", translated);
-
-        // Find 2-digit combinations (like 14, 18, 26)
-        const nums = translated.match(/\d{2}/g);
-        const isMissing = text.includes("miss") || text.includes("none") || text.includes("absent");
-
-        if (isMissing && nums) {
-            let marked = [];
-            nums.forEach(n => {
-                if (teethData[n]) {
-                    teethData[n].missing = true;
-                    document.getElementById(`t-${n}`).classList.add('missing');
-                    marked.push(n);
-                }
-            });
-            if(marked.length > 0) speak(`Recorded ${marked.join(", ")} missing.`);
-        }
-    }
-
-    document.getElementById('start-btn').onclick = async () => {
-        try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
-            rec.start();
-            document.getElementById('start-btn').innerText = "SYSTEM ACTIVE";
-            document.getElementById('start-btn').style.background = "#e74c3c";
-            speak("System online. Say tooth numbers clearly.");
-        } catch (e) { alert("Mic Error: " + e.message); }
-    };
-</script>
-</body>
-</html>
+            'five': '5', 'six': '6', 'seven': '7', 'eight
