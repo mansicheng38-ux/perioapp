@@ -3,53 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio Pro - Final Quadrant</title>
+    <title>Voice Perio Pro - Dental Layout</title>
     <style>
-        :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f8fafc; }
+        :root { --primary: #3498db; --success: #27ae60; --bg: #f8fafc; --divider: #3498db; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; padding: 10px; margin: 0; }
         
-        .header { background: white; padding: 20px; border-bottom: 2px solid var(--primary); margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .header { background: white; padding: 15px; border-bottom: 2px solid var(--primary); margin-bottom: 20px; }
         
-        /* 十字線容器 */
-        .chart-wrapper { position: relative; max-width: 1050px; margin: 0 auto; background: white; padding: 40px 20px; border-radius: 15px; }
-        
-        /* 垂直藍線 */
-        .v-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: rgba(52, 152, 219, 0.4); transform: translateX(-50%); z-index: 1; }
-        /* 水平藍線 */
-        .h-line { position: absolute; left: 0; right: 0; top: 50%; height: 4px; background: rgba(52, 152, 219, 0.4); transform: translateY(-50%); z-index: 1; }
+        /* 象限容器與十字線 */
+        .chart-wrapper { 
+            position: relative; 
+            max-width: 1100px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 40px; 
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
 
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 15px; position: relative; z-index: 2; }
-        .upper { margin-bottom: 60px; }
+        /* 垂直藍線 (分隔左右) */
+        .v-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: var(--divider); transform: translateX(-50%); z-index: 1; opacity: 0.3; }
+        /* 水平藍線 (分隔上下顎) */
+        .h-line { position: absolute; left: 0; right: 0; top: 50%; height: 4px; background: var(--divider); transform: translateY(-50%); z-index: 1; opacity: 0.3; }
+
+        .grid { display: grid; grid-template-columns: repeat(16, 1fr); gap: 8px; position: relative; z-index: 2; }
+        .upper { margin-bottom: 80px; } /* 上下顎中間的空隙 */
 
         .tooth-container { display: flex; flex-direction: column; align-items: center; position: relative; }
-        .tooth-label { font-weight: bold; font-size: 15px; margin-bottom: 5px; color: #334155; }
+        .tooth-label { font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #64748b; }
         
-        .odontogram { width: 60px; height: 60px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; position: relative; }
-        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; transition: 0.2s; }
+        .odontogram { width: 50px; height: 50px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; position: relative; }
+        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; transition: 0.1s; }
         
         /* 材質顏色 */
         .c-composite { fill: #3498db !important; }
         .c-gi { fill: #9b59b6 !important; }
         .c-caries { fill: #e74c3c !important; }
         
-        /* 缺失標記：在 SVG 上蓋一個大叉叉 */
-        .missing-x { display: none; position: absolute; top: 0; left: 0; width: 60px; height: 60px; pointer-events: none; }
+        /* 缺失標記 */
+        .missing-x { display: none; position: absolute; top: 0; left: 0; width: 50px; height: 50px; pointer-events: none; }
         .t-missing .missing-x { display: block; }
-        .t-missing .odontogram { opacity: 0.4; background: #f1f5f9; }
+        .t-missing .odontogram { opacity: 0.3; }
 
-        .t-implant .odontogram { border: 4px solid #334155; border-radius: 50%; }
+        .t-implant .odontogram { border: 3px solid #334155; border-radius: 50%; }
 
-        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; border-top: 2px solid #eee; z-index: 1000; }
-        #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 50px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        #live-box { background: #f1f5f9; padding: 12px; border-radius: 10px; margin-top: 15px; font-weight: bold; font-size: 16px; min-height: 24px; color: var(--primary); }
-        .thinking { background: #fef3c7 !important; color: #d97706 !important; border: 2px solid #f59e0b; }
+        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; border-top: 1px solid #eee; z-index: 1000; }
+        #start-btn { padding: 15px 50px; font-size: 18px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        #live-box { background: #f1f5f9; padding: 10px; border-radius: 8px; margin-top: 10px; font-weight: bold; font-size: 14px; min-height: 20px; }
+        .thinking { background: #fef3c7 !important; color: #d97706 !important; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div id="mode-title" style="font-weight: bold; font-size: 22px; color: #1e293b;">SYSTEM STANDBY</div>
-    <div id="live-box">Please Click "Start Session"</div>
+    <div id="mode-title" style="font-weight: bold; font-size: 20px; color: #1e293b;">STANDBY</div>
+    <div id="live-box">Press Start Session</div>
 </div>
 
 <div class="chart-wrapper">
@@ -65,6 +73,9 @@
 </div>
 
 <script>
+    // 牙科標準排列：
+    // 上顎：18 -> 11 (左半邊) | 21 -> 28 (右半邊)
+    // 下顎：48 -> 41 (左半邊) | 31 -> 38 (右半邊)
     const uIds = ["18","17","16","15","14","13","12","11", "21","22","23","24","25","26","27","28"];
     const lIds = ["48","47","46","45","44","43","42","41", "31","32","33","34","35","36","37","38"];
     const teethData = {};
@@ -78,7 +89,7 @@
                 el.innerHTML += `
                 <div class="tooth-container" id="container-${id}">
                     <div class="tooth-label">${id}</div>
-                    <div style="position:relative;">
+                    <div style="position:relative; width:50px; height:50px;">
                         <svg class="odontogram" viewBox="0 0 100 100">
                             <path id="${id}-B" class="surface" d="M0 0 L100 0 L75 25 L25 25 Z" />
                             <path id="${id}-L" class="surface" d="M0 100 L100 100 L75 75 L25 75 Z" />
@@ -87,8 +98,8 @@
                             <rect id="${id}-O" class="surface" x="25" y="25" width="50" height="50" />
                         </svg>
                         <svg class="missing-x" viewBox="0 0 100 100">
-                            <line x1="0" y1="0" x2="100" y2="100" stroke="red" stroke-width="8" />
-                            <line x1="100" y1="0" x2="0" y2="100" stroke="red" stroke-width="8" />
+                            <line x1="0" y1="0" x2="100" y2="100" stroke="red" stroke-width="10" />
+                            <line x1="100" y1="0" x2="0" y2="100" stroke="red" stroke-width="10" />
                         </svg>
                     </div>
                 </div>`;
@@ -100,7 +111,6 @@
     function updateUI(id) {
         const container = document.getElementById(`container-${id}`);
         const data = teethData[id];
-        // 確保移除舊樣式再加入新樣式
         container.classList.remove('t-missing', 't-implant');
         if (data.status === 'missing') container.classList.add('t-missing');
         if (data.status === 'implant') container.classList.add('t-implant');
@@ -137,21 +147,21 @@
             if (text.includes("general")) {
                 appState = "charting";
                 document.getElementById('mode-title').innerText = "MODE: GENERAL CHARTING";
-                speak("General Charting online.");
+                speak("General mode.");
             } else if (text.includes("perio")) {
                 appState = "charting";
                 document.getElementById('mode-title').innerText = "MODE: PERIO CHARTING";
-                speak("Perio Charting online.");
+                speak("Perio mode.");
             }
         } else if (appState === "charting") {
-            processWithAI(text);
+            processAI(text);
         }
     };
 
-    async function processWithAI(text) {
+    async function processAI(text) {
         const liveBox = document.getElementById('live-box');
         liveBox.classList.add('thinking');
-        liveBox.innerText = "Gemini is processing...";
+        liveBox.innerText = "Gemini Analyzing...";
         
         try {
             const res = await fetch('/api/gemini', {
@@ -171,19 +181,18 @@
                 });
                 speak("Recorded.");
             }
-        } catch (e) {
-            console.error(e);
-            liveBox.innerText = "AI Parsing Error. Try again.";
-        }
+        } catch (e) { console.error(e); }
+        
+        // 關鍵修正：不論成功或失敗，強制解除卡住狀態
         liveBox.classList.remove('thinking');
+        liveBox.innerText = "Ready.";
     }
 
     document.getElementById('start-btn').onclick = () => {
         appState = "selecting";
-        document.getElementById('start-btn').innerText = "MIC ACTIVE";
+        document.getElementById('start-btn').innerText = "LISTENING";
         document.getElementById('start-btn').style.background = "#e74c3c";
-        document.getElementById('mode-title').innerText = "SELECTING MODE...";
-        speak("General Charting or Perio Charting?");
+        speak("General or Perio?");
         try { rec.start(); } catch(e) {}
     };
 </script>
