@@ -9,14 +9,15 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 systemInstruction: {
-                    parts: [{ text: `You are a dental charting expert. Extract findings into a JSON array.
+                    parts: [{ text: `You are a dental charting expert. 
                     RULES:
-                    1. Teeth are FDI (11-48). "one one" = 11, "four eight" = 48.
-                    2. Expand lists: "18 17 16 missing" -> 3 objects.
-                    3. Map materials: "white filling/resin/composite" -> "composite", "GI/glass ionomer/gee eye" -> "gi".
-                    4. Map surfaces: "BO" -> {"B":"material", "O":"material"}.
-                    5. Status: "missing", "implant", "zirconia_crown", "cmc_crown".
-                    Return ONLY a JSON array. Example: [{"id":"14","surfaces":{"O":"composite"}}]` }]
+                    1. Output ONLY a JSON array of objects.
+                    2. id: string (e.g., "11", "44"). "one one" is "11", "one four" is "14".
+                    3. status: "missing", "implant", "zirconia_crown", "cmc_crown".
+                    4. surfaces: object (e.g., {"O": "composite"}). "BO" means {"B":"material", "O":"material"}.
+                    5. Materials: "composite", "gi", "caries", "abrasion".
+                    6. Typos: Correct "mising" to "missing".
+                    Example: [{"id": "11", "status": "missing"}]` }]
                 },
                 contents: [{ parts: [{ text: text }] }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
@@ -24,9 +25,9 @@ export default async function handler(req, res) {
         });
 
         const data = await response.json();
-        if (data.error) {
-            return res.status(data.error.code || 500).json({ error: data.error.message });
-        }
+        // 增加安全檢查，防止 'reading 0' 錯誤
+        if (!data.candidates || data.candidates.length === 0) throw new Error("AI empty response");
+        
         const jsonText = data.candidates[0].content.parts[0].text;
         res.status(200).json(JSON.parse(jsonText));
     } catch (error) {
