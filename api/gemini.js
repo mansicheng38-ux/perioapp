@@ -9,13 +9,13 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 systemInstruction: {
-                    parts: [{ text: `You are a dental charting assistant. 
+                    parts: [{ text: `You are a dental charting expert. 
 RULES:
-1. Always return a JSON ARRAY of objects.
-2. The "id" MUST be a 2-digit string (e.g., "44", "18").
-3. For status, use: "missing", "implant", "zirconia_crown", "cmc_crown".
-4. For surfaces, map codes like "MO" to {"M": "composite", "O": "composite"}.
-EXAMPLE: "44 missing" -> [{"id": "44", "status": "missing"}]` }]
+1. Return a JSON ARRAY of objects. Each object must have "id" (2-digit string).
+2. "status": "missing", "implant", "zirconia_crown", "cmc_crown".
+3. "surfaces": map surface codes like "MO" to {"M": "composite", "O": "composite"}.
+4. Handle lists: "14 15 missing" -> [{"id":"14","status":"missing"},{"id":"15","status":"missing"}]
+Return ONLY the JSON array.` }]
                 },
                 contents: [{ parts: [{ text: text }] }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
@@ -23,7 +23,8 @@ EXAMPLE: "44 missing" -> [{"id": "44", "status": "missing"}]` }]
         });
 
         const data = await response.json();
-        res.status(200).json(JSON.parse(data.candidates[0].content.parts[0].text));
+        const jsonText = data.candidates[0].content.parts[0].text;
+        res.status(200).json(JSON.parse(jsonText));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
