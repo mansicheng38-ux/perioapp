@@ -165,4 +165,86 @@
         let t = raw.toLowerCase().trim();
 
         // 關鍵糾錯映射
-        t = t.replace(/buckle/g, "buccal
+        t = t.replace(/buckle/g, "buccal");
+        t = t.replace(/(\d{2})\s+two\s+(\d{2})/g, "$1 to $2"); // 修正 31 two 35 -> 31 to 35
+        t = t.replace(/one\s+one/g, "11").replace(/one\s+two/g, "12").replace(/one\s+three/g, "13").replace(/one\s+four/g, "14").replace(/one\s+five/g, "15");
+        t = t.replace(/\b(\d)\s+(\d)\b/g, "$1$2"); // "3 1" -> "31"
+
+        document.getElementById('status-bar').innerText = "HEARD: " + t;
+
+        if (t.includes("play back recording")) { speak("Recording: " + voiceLog.join(". ")); return; }
+
+        if (appState === "init") {
+            if (t.includes("general")) setMode('general', true);
+            else if (t.includes("perio")) setMode('perio', true);
+        } else if (appState === "general") {
+            processGeneral(t);
+        }
+        // ... Perio 邏輯與之前保持一致
+    };
+
+    /* --- LOGIC HANDLERS --- */
+    function processGeneral(t) {
+        // 範圍處理: "31 to 35 missing"
+        const range = t.match(/(\d{2})\s*to\s*(\d{2})\s*(missing|bridge)/);
+        if (range) {
+            let s = parseInt(range[1]), e = parseInt(range[2]);
+            let min = Math.min(s, e), max = Math.max(s, e);
+            allIds.forEach(id => {
+                if (parseInt(id) >= min && parseInt(id) <= max) {
+                    if (range[3] === "missing") updateStatus(id, 'missing', true);
+                    if (range[3] === "bridge") updateStatus(id, 'bridge', true);
+                }
+            });
+            speak(`${range[3]} from ${s} to ${e}`);
+            return;
+        }
+
+        // 個別牙齒處理: "31 buccal composite"
+        const ids = t.match(/\b([1-4][1-8])\b/g);
+        if (!ids) return;
+
+        ids.forEach(id => {
+            if (t.includes("missing")) updateStatus(id, 'missing', true);
+            
+            let mat = t.includes("composite") ? "composite" : (t.includes("gi") ? "gi" : null);
+            if (mat) {
+                if (t.includes("buccal") || t.includes(" b ")) setSurface(id, 'B', mat);
+                if (t.includes("lingual") || t.includes(" l ")) setSurface(id, 'L', mat);
+                if (t.includes("mo")) { setSurface(id, 'M', mat); setSurface(id, 'O', mat); }
+                if (t.includes("occlusal") || t.includes(" o ")) setSurface(id, 'O', mat);
+            }
+        });
+        speak("Updated");
+    }
+
+    /* --- MANUAL HELPERS --- */
+    function setMode(m, voice = false) {
+        appState = m;
+        document.getElementById('btn-gen').classList.toggle('active', m === 'general');
+        document.getElementById('btn-perio').classList.toggle('active', m === 'perio');
+        document.getElementById('general-ui').style.display = m === 'general' ? 'block' : 'none';
+        document.getElementById('perio-ui').style.display = m === 'perio' ? 'block' : 'none';
+        if(voice) speak(`${m} mode active.`);
+    }
+
+    function manualMissing(id) { updateStatus(id, 'missing', !dentalData[id].missing); }
+    function manualSurface(e, id, s) {
+        e.stopPropagation();
+        const mats = [null, 'composite', 'gi'];
+        let next = mats[(mats.indexOf(dentalData[id].surfaces[s]) + 1) % mats.length];
+        setSurface(id, s, next);
+    }
+
+    function updateStatus(id, key, val) {
+        dentalData[id][key] = val;
+        document.getElementById(`unit-${id}`).classList.toggle('t-missing', dentalData[id].missing);
+    }
+
+    function setSurface(id, s, mat) {
+        dentalData[id].surfaces[s] = mat;
+        document.getElementById(`${id}-${s}`).className.baseVal = "surface" + (mat ? ` c-${mat}` : "");
+    }
+</script>
+</body>
+</html>
