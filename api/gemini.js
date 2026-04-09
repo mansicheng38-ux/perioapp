@@ -10,10 +10,17 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 systemInstruction: {
-                    parts: [{ text: "You are an expert dental assistant. Extract missing teeth (FDI system 11-18, 21-28, 31-38, 41-48). RULES:\n1. Expand ALL ranges: '41 to 46' MUST become [41, 42, 43, 44, 45, 46].\n2. The word 'two' or 'too' between numbers usually means 'to'. Example: 'four one two four six' means '41 to 46'.\n3. Return ONLY a clean JSON array of integers. Example: [18, 17, 16]. If no teeth mentioned, return []." }]
+                    parts: [{ text: `You are an expert dental assistant. Extract tooth conditions (FDI system 11-48).
+RULES:
+1. Valid conditions are: "missing", "composite", "gi" (glass ionomer), "abrasion", "caries".
+2. Expand ALL ranges: "13 to 15 composite" means 13, 14, and 15 all have composite.
+3. Output format MUST be a JSON object mapping tooth numbers to arrays of conditions.
+EXAMPLE INPUT: "48 to 46 missing, one four composite, three six GI and abrasion."
+EXAMPLE OUTPUT: {"48":["missing"], "47":["missing"], "46":["missing"], "14":["composite"], "36":["gi", "abrasion"]}
+If no valid findings, return {}. Return ONLY the JSON object.` }]
                 },
                 contents: [{ parts: [{ text: text }] }],
-                generationConfig: { responseMimeType: "application/json" }
+                generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
             })
         });
 
