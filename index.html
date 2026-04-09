@@ -3,18 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio - AI Assistant</title>
+    <title>Voice Perio - Full Charting</title>
     <style>
-        :root { --primary: #8e44ad; --success: #27ae60; --danger: #e74c3c; --bg: #f4f7f6; }
+        :root { --primary: #8e44ad; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; text-align: center; }
         .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-width: 900px; margin: 0 auto 20px; }
-        .tooth { background: white; border: 1px solid #ddd; padding: 15px 5px; border-radius: 8px; font-weight: bold; height: 55px; display: flex; align-items: center; justify-content: center; position: relative; transition: 0.3s; }
-        .tooth.missing { background: #455a64 !important; color: white; opacity: 0.7; }
-        .tooth.missing::after { content: '✕'; position: absolute; font-size: 35px; color: rgba(255,0,0,0.5); }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-width: 950px; margin: 0 auto 20px; }
+        
+        /* 牙齒格子升級：可以容納標籤 */
+        .tooth { background: white; border: 1px solid #ddd; border-radius: 8px; height: 75px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; position: relative; transition: 0.3s; padding-top: 8px; overflow: hidden; }
+        .t-num { font-weight: bold; font-size: 16px; margin-bottom: 4px; z-index: 2; }
+        .badges { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; width: 100%; padding: 0 2px; z-index: 2; }
+        
+        /* 標籤樣式 */
+        .badge { font-size: 10px; font-weight: bold; padding: 2px 4px; border-radius: 4px; color: white; }
+        .b-comp { background: #3498db; } /* 樹脂：藍色 */
+        .b-gi { background: #9b59b6; }   /* 玻璃離子：紫色 */
+        .b-abr { background: #e67e22; }  /* 磨耗：橘色 */
+        .b-caries { background: #e74c3c; } /* 蛀牙：紅色 */
+        
+        /* 缺失樣式保留 */
+        .tooth.missing { opacity: 0.6; background: #bdc3c7; }
+        .tooth.missing::after { content: '✕'; position: absolute; top: 15px; font-size: 40px; color: rgba(255,0,0,0.4); z-index: 1; }
+        
         .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); z-index: 1000; }
         #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
-        #live-box { background: #f3e5f5; padding: 10px; border-radius: 8px; color: #8e44ad; margin-top: 10px; font-weight: bold; min-height: 24px; font-size: 15px; transition: 0.3s; }
+        #live-box { background: #f3e5f5; padding: 10px; border-radius: 8px; color: #8e44ad; margin-top: 10px; font-weight: bold; min-height: 24px; font-size: 15px; }
         .thinking { animation: pulse 1.5s infinite; background: #ffeaa7 !important; color: #d35400 !important; }
         @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
@@ -22,7 +36,7 @@
 <body>
 
 <div class="header">
-    <div id="mode-title" style="font-weight: bold; font-size: 20px;">AI MODE: STANDBY</div>
+    <div id="mode-title" style="font-weight: bold; font-size: 20px;">AI MODE: OMNI CHARTING</div>
     <div id="live-box">System Ready. Click Start.</div>
 </div>
 
@@ -36,19 +50,19 @@
 <script>
     const uIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
     const lIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
+    
+    // 升級資料庫：現在每顆牙齒可以同時擁有多種狀態
     const teethData = {};
     
-    // 狀態機：控制目前的流程
-    let silenceTimer, accumulatedText = "";
-    let appState = "idle"; // 可以是: "idle", "selecting_mode", "charting"
-
     window.onload = () => {
         const draw = (ids, target) => {
             const el = document.getElementById(target);
             ids.forEach(id => {
-                teethData[id] = { missing: false };
+                teethData[id] = { missing: false, conditions: new Set() };
                 const div = document.createElement('div');
-                div.className = 'tooth'; div.id = `t-${id}`; div.innerText = id;
+                div.className = 'tooth'; 
+                div.id = `t-${id}`; 
+                div.innerHTML = `<div class="t-num">${id}</div><div class="badges" id="b-${id}"></div>`;
                 el.appendChild(div);
             });
         };
@@ -62,11 +76,30 @@
         window.speechSynthesis.speak(m);
     }
 
+    // 負責將資料畫到畫面上的核心函數
+    function renderTooth(id) {
+        const toothEl = document.getElementById(`t-${id}`);
+        const badgeContainer = document.getElementById(`b-${id}`);
+        const data = teethData[id];
+
+        // 處理缺失
+        if (data.missing) toothEl.classList.add('missing');
+        else toothEl.classList.remove('missing');
+
+        // 處理標籤
+        badgeContainer.innerHTML = "";
+        data.conditions.forEach(cond => {
+            if (cond === 'composite') badgeContainer.innerHTML += `<span class="badge b-comp">COMP</span>`;
+            if (cond === 'gi') badgeContainer.innerHTML += `<span class="badge b-gi">GI</span>`;
+            if (cond === 'abrasion') badgeContainer.innerHTML += `<span class="badge b-abr">ABR</span>`;
+            if (cond === 'caries') badgeContainer.innerHTML += `<span class="badge b-caries">DECAY</span>`;
+        });
+    }
+
+    let silenceTimer, accumulatedText = "";
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const rec = new SpeechRecognition();
-    rec.lang = 'en-US';
-    rec.continuous = true;
-    rec.interimResults = true;
+    rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true;
 
     rec.onresult = (event) => {
         let interim = "", finalStr = "";
@@ -77,34 +110,12 @@
 
         const currentText = (accumulatedText + finalStr + interim).toLowerCase();
         const liveBox = document.getElementById('live-box');
-        
-        if (!liveBox.classList.contains('thinking')) {
-            liveBox.innerText = "Hearing: " + currentText;
-        }
+        if (!liveBox.classList.contains('thinking')) liveBox.innerText = "Hearing: " + currentText;
 
         clearTimeout(silenceTimer);
         silenceTimer = setTimeout(() => {
             if (currentText.trim()) {
-                
-                // === 階段 1：選擇模式 ===
-                if (appState === "selecting_mode") {
-                    if (currentText.includes("general")) {
-                        appState = "charting";
-                        document.getElementById('mode-title').innerText = "AI MODE: GENERAL CHARTING";
-                        speak("General charting. Describe missing teeth.");
-                    } else if (currentText.includes("perio")) {
-                        appState = "charting";
-                        document.getElementById('mode-title').innerText = "AI MODE: PERIO CHARTING";
-                        speak("Perio charting. Describe missing teeth.");
-                    } else {
-                        speak("Please specify General charting or Perio charting.");
-                    }
-                } 
-                // === 階段 2：送交給 AI 畫圖 ===
-                else if (appState === "charting") {
-                    sendToGemini(currentText);
-                }
-                
+                sendToGemini(currentText);
                 accumulatedText = ""; 
             }
         }, 1500); 
@@ -113,7 +124,7 @@
     async function sendToGemini(text) {
         const liveBox = document.getElementById('live-box');
         liveBox.classList.add('thinking');
-        liveBox.innerText = "Gemini is analyzing...";
+        liveBox.innerText = "Gemini is charting conditions...";
 
         try {
             const response = await fetch('/api/gemini', {
@@ -122,32 +133,32 @@
                 body: JSON.stringify({ text: text })
             });
             
-            const aiData = await response.json(); 
+            const aiData = await response.json(); // Expected: {"14":["composite"], "46":["missing"]}
             liveBox.classList.remove('thinking');
 
-            if (Array.isArray(aiData) && aiData.length > 0) {
-                let marked = [], spokenNums = [];
-                aiData.forEach(n => {
-                    if (teethData[n] && !teethData[n].missing) {
-                        teethData[n].missing = true;
-                        document.getElementById(`t-${n}`).classList.add('missing');
-                        marked.push(n);
-                        spokenNums.push(n.toString().split('').join(' ')); 
-                    }
-                });
+            let updatedCount = 0;
 
-                if(marked.length > 0) {
-                    liveBox.innerText = `AI Confirmed: ${marked.join(", ")}`;
-                    speak(`Recorded ${spokenNums.join(", ")} missing.`);
-                } else {
-                    liveBox.innerText = "Ready for next command.";
+            // 解析 Gemini 傳回來的結構化字典
+            for (const [toothNum, conditions] of Object.entries(aiData)) {
+                if (teethData[toothNum]) {
+                    conditions.forEach(cond => {
+                        if (cond === 'missing') teethData[toothNum].missing = true;
+                        else teethData[toothNum].conditions.add(cond);
+                    });
+                    renderTooth(toothNum); // 更新畫面
+                    updatedCount++;
                 }
+            }
+
+            if (updatedCount > 0) {
+                liveBox.innerText = "Charting updated.";
+                speak("Recorded.");
             } else {
-                liveBox.innerText = "AI didn't detect any new missing teeth.";
+                liveBox.innerText = "No findings recorded.";
             }
         } catch (error) {
             liveBox.classList.remove('thinking');
-            liveBox.innerText = "Network Error connecting to AI.";
+            liveBox.innerText = "Network Error.";
         }
     }
 
@@ -155,16 +166,9 @@
         try {
             await navigator.mediaDevices.getUserMedia({ audio: true });
             rec.start();
-            
-            // 進入模式選擇狀態
-            appState = "selecting_mode";
-            document.getElementById('mode-title').innerText = "SELECTING MODE...";
             document.getElementById('start-btn').innerText = "SYSTEM ACTIVE";
             document.getElementById('start-btn').style.background = "#e74c3c";
-            
-            speak("General Charting, or Perio Charting?");
-            document.getElementById('live-box').innerText = "Waiting for you to say 'General' or 'Perio'...";
-            
+            speak("Omni charting online. Dictate all conditions.");
         } catch (e) { alert("Mic Error: " + e.message); }
     };
 </script>
