@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio - Debug Pro</title>
+    <title>Voice Perio - Stable Fix</title>
     <style>
         :root { --primary: #8e44ad; --success: #27ae60; --danger: #e74c3c; --bg: #f8fafc; --tooth-border: #cbd5e1; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; padding: 10px; }
         .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; max-width: 1000px; margin: 0 auto 100px; }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; max-width: 1000px; margin: 0 auto 20px; }
         .tooth-container { display: flex; flex-direction: column; align-items: center; position: relative; }
         .tooth-label { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #475569; }
         .odontogram { width: 60px; height: 60px; background: white; border: 1px solid var(--tooth-border); border-radius: 4px; }
@@ -27,7 +27,7 @@
         #live-box { background: #f3e5f5; padding: 10px; border-radius: 8px; color: #8e44ad; margin-top: 10px; font-weight: bold; min-height: 24px; font-size: 15px; }
         .thinking { animation: pulse 1s infinite !important; background: #ffeaa7 !important; color: #d35400 !important; }
         @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-        #debug-log { font-size: 10px; color: #999; margin-top: 10px; text-align: left; max-width: 1000px; margin: 10px auto; display: none; }
+        #debug-info { font-size: 11px; color: #777; margin-top: 15px; text-align: left; padding: 10px; background: #eee; border-radius: 5px; max-width: 900px; margin-inline: auto; overflow-x: auto; }
     </style>
 </head>
 <body>
@@ -40,7 +40,7 @@
 <div class="grid" id="upper-grid"></div>
 <div class="grid" id="lower-grid"></div>
 
-<div id="debug-log"></div>
+<div id="debug-info">Debug: Waiting for AI...</div>
 
 <div class="controls">
     <button id="start-btn">Start Session</button>
@@ -51,7 +51,6 @@
     const lIds = ["48","47","46","45","44","43","42","41", "31","32","33","34","35","36","37","38"];
     const teethData = {};
     let appState = "idle"; 
-    let silenceTimer;
 
     window.onload = () => {
         const draw = (ids, target) => {
@@ -109,13 +108,12 @@
     };
 
     async function handleVoiceCommand(text) {
-        // 模式選擇：嚴格匹配，避免雜音誤觸
         if (appState === "selecting") {
-            if (text === "general" || text.includes("general charting")) {
+            if (text.includes("general")) {
                 appState = "charting";
                 document.getElementById('mode-title').innerText = "AI MODE: GENERAL CHARTING";
                 speak("General Charting confirmed.");
-            } else if (text === "perio" || text.includes("perio charting")) {
+            } else if (text.includes("perio")) {
                 appState = "charting";
                 document.getElementById('mode-title').innerText = "AI MODE: PERIO CHARTING";
                 speak("Perio Charting confirmed.");
@@ -136,8 +134,7 @@
                 });
                 const aiData = await response.json();
                 
-                // Debug Log
-                document.getElementById('debug-log').innerText = "AI JSON: " + JSON.stringify(aiData);
+                document.getElementById('debug-info').innerText = "AI JSON: " + JSON.stringify(aiData);
 
                 let updated = false;
                 if (Array.isArray(aiData)) {
@@ -155,20 +152,17 @@
                 if (updated) speak("Recorded.");
                 liveBox.innerText = "Ready.";
             } catch (e) {
-                liveBox.innerText = "Error parsing data.";
-                console.error(e);
+                document.getElementById('debug-info').innerText = "Error: " + e.message;
             } finally {
-                // 絕對保證移除黃色槓槓
-                setTimeout(() => liveBox.classList.remove('thinking'), 200);
+                liveBox.classList.remove('thinking');
             }
         }
     }
 
     document.getElementById('start-btn').onclick = () => {
         appState = "selecting";
-        document.getElementById('mode-title').innerText = "WAITING FOR MODE...";
-        document.getElementById('start-btn').innerText = "SYSTEM ACTIVE";
-        speak("Specify General or Perio Charting?");
+        document.getElementById('mode-title').innerText = "SELECTING MODE...";
+        speak("General or Perio?");
         try { rec.start(); } catch(e) {}
     };
 </script>
