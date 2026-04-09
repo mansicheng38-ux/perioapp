@@ -6,7 +6,7 @@
     <title>Voice Perio Pro - Final Clinical</title>
     <style>
         :root { --primary: #3498db; --success: #27ae60; --bg: #f8fafc; --divider: rgba(52, 152, 219, 0.4); }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; padding: 0; margin: 0; }
         .header { background: white; padding: 15px; border-bottom: 3px solid var(--primary); }
         
         .chart-wrapper { 
@@ -19,7 +19,7 @@
 
         .row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 10px; position: relative; z-index: 2; }
         .tooth-container { display: flex; flex-direction: column; align-items: center; position: relative; }
-        .tooth-label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #475569; }
+        .tooth-label { font-weight: bold; font-size: 13px; margin-bottom: 6px; color: #475569; }
         .odontogram { width: 48px; height: 48px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; }
         
         .c-composite { fill: #3498db !important; }
@@ -31,16 +31,16 @@
         .t-missing .odontogram { opacity: 0.2; }
 
         .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; border-top: 2px solid #eee; z-index: 1000; }
-        #start-btn { padding: 15px 60px; font-size: 18px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
-        #status-bar { background: #f1f5f9; padding: 12px; border-radius: 10px; margin-top: 10px; font-weight: bold; min-height: 24px; color: #8e44ad; }
-        #log-area { background: #1e293b; color: #38bdf8; padding: 10px; margin: 10px auto; max-width: 900px; border-radius: 8px; font-family: monospace; font-size: 12px; text-align: left; }
+        #start-btn { padding: 18px 60px; font-size: 18px; border-radius: 50px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        #live-box { background: #f1f5f9; padding: 12px; border-radius: 10px; margin-top: 10px; font-weight: bold; min-height: 24px; color: #8e44ad; }
+        #ai-response-box { background: #1e293b; color: #38bdf8; padding: 10px; margin: 10px auto; max-width: 900px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div id="mode-title" style="font-weight: bold; font-size: 22px;">VOICE PERIO - CLINICAL</div>
-    <div id="status-bar">Press Start Session</div>
+    <div id="mode-title" style="font-weight: bold; font-size: 24px;">SYSTEM READY</div>
+    <div id="live-box">Wait for Start...</div>
 </div>
 
 <div class="chart-wrapper">
@@ -49,7 +49,7 @@
     <div class="row" id="lower-grid"></div>
 </div>
 
-<div id="log-area">AI LOG: Waiting for input...</div>
+<div id="ai-response-box">AI Response will appear here...</div>
 
 <div class="controls">
     <button id="start-btn">Start Session</button>
@@ -96,8 +96,8 @@
         ['B','L','M','D','O'].forEach(s => {
             const p = document.getElementById(`${tid}-${s}`);
             if (p) {
-                p.style.fill = teethData[tid].surfaces[s] === 'composite' ? '#3498db' : 
-                               teethData[tid].surfaces[s] === 'gi' ? '#9b59b6' : '#fff';
+                const mat = teethData[tid].surfaces[s];
+                p.style.fill = mat === 'composite' ? '#3498db' : mat === 'gi' ? '#9b59b6' : mat === 'caries' ? '#e74c3c' : '#fff';
             }
         });
     }
@@ -107,7 +107,7 @@
 
     rec.onresult = (event) => {
         const text = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-        document.getElementById('status-bar').innerText = "Heard: " + text;
+        document.getElementById('live-box').innerText = "Heard: " + text;
         
         if (appState === "selecting") {
             if (text.includes("general")) {
@@ -121,9 +121,9 @@
     };
 
     async function processAI(text) {
-        const bar = document.getElementById('status-bar');
-        const log = document.getElementById('log-area');
-        bar.innerText = "Gemini Analyzing...";
+        const box = document.getElementById('live-box');
+        const respBox = document.getElementById('ai-response-box');
+        box.innerText = "Gemini Analyzing...";
 
         try {
             const res = await fetch('/api/gemini', {
@@ -132,10 +132,10 @@
                 body: JSON.stringify({ text })
             });
             const data = await res.json();
-            log.innerText = "AI RESPONSE: " + JSON.stringify(data);
+            respBox.innerText = "AI RESPONSE: " + JSON.stringify(data);
 
             if (data.apiError) {
-                bar.innerText = "Error: " + data.apiError;
+                box.innerText = "Error: " + data.apiError;
                 return;
             }
 
@@ -150,13 +150,13 @@
                 });
                 window.speechSynthesis.speak(new SpeechSynthesisUtterance("Recorded."));
             }
-        } catch (e) { log.innerText = "System Error: " + e.message; }
-        bar.innerText = "Ready.";
+        } catch (e) { respBox.innerText = "Error: " + e.message; }
+        box.innerText = "Ready.";
     }
 
     document.getElementById('start-btn').onclick = () => {
         appState = "selecting";
-        document.getElementById('start-btn').innerText = "MIC ON";
+        document.getElementById('start-btn').innerText = "LISTENING";
         window.speechSynthesis.speak(new SpeechSynthesisUtterance("General or Perio?"));
         try { rec.start(); } catch(e) {}
     };
