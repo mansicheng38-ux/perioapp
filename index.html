@@ -53,3 +53,80 @@
     };
 
     // 2. Clear Voice Feedback
+    function speak(t) {
+        window.speechSynthesis.cancel();
+        const m = new SpeechSynthesisUtterance(t);
+        m.lang = 'en-US';
+        window.speechSynthesis.speak(m);
+    }
+
+    // 3. Speech Recognition Setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US';
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    rec.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) accumulatedText += event.results[i][0].transcript + " ";
+            else interim += event.results[i][0].transcript;
+        }
+
+        const currentText = (accumulatedText + interim);
+        document.getElementById('live-box').innerText = "Hearing: " + currentText;
+
+        // --- THE 2-SECOND SILENCE TRIGGER ---
+        clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(() => {
+            if (currentText.trim()) {
+                processVoiceData(currentText);
+                accumulatedText = ""; // Clear for next round
+            }
+        }, 2000); 
+    };
+
+    // 4. Logic: Process Missing Teeth
+    function processVoiceData(text) {
+        const lowerText = text.toLowerCase();
+        // Catch all numbers in the sentence
+        const nums = lowerText.match(/\d+/g);
+        
+        // Keywords for missing
+        const isMissing = lowerText.includes("miss") || lowerText.includes("none") || lowerText.includes("absent");
+
+        if (isMissing && nums) {
+            let marked = [];
+            nums.forEach(n => {
+                if (teethData[n]) {
+                    teethData[n].missing = true;
+                    document.getElementById(`t-${n}`).classList.add('missing');
+                    marked.push(n);
+                }
+            });
+            if(marked.length > 0) {
+                speak(`Recorded ${marked.join(", ")} missing.`);
+            }
+        }
+    }
+
+    // 5. Start Button with Safety Check
+    document.getElementById('start-btn').onclick = async () => {
+        if (window.location.protocol === 'file:') {
+            alert("❌ Browser block: Cannot use voice on a local file.\nPlease use your GitHub Pages URL (https://...).");
+            return;
+        }
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            rec.start();
+            document.getElementById('start-btn').innerText = "SYSTEM ACTIVE";
+            document.getElementById('start-btn').style.background = "#e74c3c";
+            speak("Assistant online. Say tooth numbers and the word missing.");
+        } catch (e) {
+            alert("Mic Error: " + e.message);
+        }
+    };
+</script>
+</body>
+</html>
