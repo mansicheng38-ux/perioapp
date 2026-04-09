@@ -106,17 +106,18 @@
     let audioLog = [];
     let isMicActive = false; 
     
+    // Perio State Machine
     let perioStep = 0;
     let toothIndex = 0;
     const pSeq = [
-        { label: "Upper Buccal PD", type: "PD", side: "b", teeth: uIds, msg: "Start probing depth, 18 distal buccal to 28 distal buccal." },
-        { label: "Upper Buccal BOP", type: "BOP", side: "b", teeth: [...uIds].reverse(), msg: "Record BOP, 28 to 18 buccal." },
-        { label: "Upper Palatal PD", type: "PD", side: "p", teeth: [...uIds].reverse(), msg: "To palatal. Probing depth 28 to 18." },
-        { label: "Upper Palatal BOP", type: "BOP", side: "p", teeth: uIds, msg: "Record BOP, 18 to 28 palatal." },
-        { label: "Lower Buccal PD", type: "PD", side: "b", teeth: [...lIds].reverse(), msg: "Lower arch. Probing depth 38 to 48 buccal." },
-        { label: "Lower Buccal BOP", type: "BOP", side: "b", teeth: lIds, msg: "Record BOP, 48 to 38 buccal." },
-        { label: "Lower Lingual PD", type: "PD", side: "p", teeth: lIds, msg: "To lingual. Probing depth 48 to 38." },
-        { label: "Lower Lingual BOP", type: "BOP", side: "p", teeth: [...lIds].reverse(), msg: "Record BOP, 38 to 48 lingual." },
+        { label: "Upper Buccal PD", type: "PD", side: "b", teeth: uIds, msg: "Start probing depth, one eight distal buccal to two eight distal buccal." },
+        { label: "Upper Buccal BOP", type: "BOP", side: "b", teeth: [...uIds].reverse(), msg: "Record BOP, two eight to one eight buccal." },
+        { label: "Upper Palatal PD", type: "PD", side: "p", teeth: [...uIds].reverse(), msg: "To palatal. Probing depth two eight to one eight." },
+        { label: "Upper Palatal BOP", type: "BOP", side: "p", teeth: uIds, msg: "Record BOP, one eight to two eight palatal." },
+        { label: "Lower Buccal PD", type: "PD", side: "b", teeth: [...lIds].reverse(), msg: "Lower arch. Probing depth three eight to four eight buccal." },
+        { label: "Lower Buccal BOP", type: "BOP", side: "b", teeth: lIds, msg: "Record BOP, four eight to three eight buccal." },
+        { label: "Lower Lingual PD", type: "PD", side: "p", teeth: lIds, msg: "To lingual. Probing depth four eight to three eight." },
+        { label: "Lower Lingual BOP", type: "BOP", side: "p", teeth: [...lIds].reverse(), msg: "Record BOP, three eight to four eight lingual." },
         { label: "Recession", type: "REC", msg: "Record recession mid-buccal." },
         { label: "Mobility", type: "MOB", msg: "Record mobility." }
     ];
@@ -164,7 +165,28 @@
     rec.lang = 'en-US'; rec.continuous = true;
     rec.onend = () => { if (isMicActive) { try { rec.start(); } catch(e) {} } };
 
-    function speak(t) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(t)); }
+    // Function to read numbers digit by digit to avoid translation issues
+    function readDigits(text) {
+        return text.split('').join(' ');
+    }
+
+    function speak(t, formatDigits = false) { 
+        window.speechSynthesis.cancel(); 
+        let utteranceText = formatDigits ? readDigits(t) : t;
+        let utterance = new SpeechSynthesisUtterance(utteranceText);
+        // Force English voice
+        let voices = window.speechSynthesis.getVoices();
+        let enVoice = voices.find(v => v.lang.startsWith('en'));
+        if (enVoice) {
+            utterance.voice = enVoice;
+        }
+        window.speechSynthesis.speak(utterance); 
+    }
+
+    // Attempt to load voices early to fix the Mandarin bug
+    window.speechSynthesis.onvoiceschanged = function() {
+        window.speechSynthesis.getVoices();
+    };
 
     function toggleMic() {
         if(!isMicActive) {
@@ -188,7 +210,6 @@
         if (t.includes("play back recording")) { speak("Recording: " + audioLog.join(". ")); return; }
 
         if (appState === "init") {
-            // 移除了用語音判斷 general，強制要求使用者手動點擊右上角按鈕，徹底解決雜音誤判
             document.getElementById('log-box').innerText = "PLEASE CLICK A MODE BUTTON: " + t;
         } else if (appState === "general") {
             document.getElementById('log-box').innerText = "AI Analyzing: " + t;
@@ -214,9 +235,8 @@
         }
     };
 
-    // 點擊按鈕切換模式，確保不被雜音干擾
     function setMode(m, isClick=false) {
-        if (!isMicActive && isClick) toggleMic(); // 如果還沒按 START，點擊模式會自動啟動麥克風
+        if (!isMicActive && isClick) toggleMic(); 
         
         appState = m;
         document.getElementById('btn-gen').classList.toggle('active', m === 'general');
@@ -244,6 +264,16 @@
         const step = pSeq[perioStep];
         if (!step) return;
 
+        // Skip missing teeth automatically
+        while (toothIndex < step.teeth.length && dentalData[step.teeth[toothIndex]].missing) {
+            toothIndex++;
+        }
+
+        if (toothIndex >= step.teeth.length) {
+            moveToNextPerioStep();
+            return;
+        }
+
         if (step.type === "REC" || step.type === "MOB") {
             let tFormat = t.replace(/one one/g, "11").replace(/two one/g,"21").replace(/\b(\d)\s+(\d)\b/g, "$1$2");
             let idMatch = tFormat.match(/\b([1-4][1-8])\b/);
@@ -262,14 +292,17 @@
         }
 
         let tooth = step.teeth[toothIndex];
-        let nextTooth = step.teeth[toothIndex + 1];
 
         allIds.forEach(id => { let th = document.getElementById(`pth-${id}`); if(th) th.classList.remove('active-cell'); });
         document.getElementById(`pth-${tooth}`).classList.add('active-cell');
 
-        let digits = t.replace(/\s+/g, '').match(/\d{3}/);
-        if (digits) {
-            let vals = digits[0].split('');
+        // Extract numbers, ignoring everything else
+        let digits = t.replace(/[^\d]/g, '');
+        
+        // If we found a 3 digit sequence, apply it
+        if (digits.length >= 3) {
+            // Take the first 3 digits if user spoke rapidly
+            let vals = digits.substring(0, 3).split('');
             let prefix = step.side === "b" ? "pdb" : "pdp";
             
             if (step.type === "PD") {
@@ -280,16 +313,49 @@
                 if (vals.includes('1')) document.getElementById(`${prefix}-${tooth}`).style.color = "red";
             }
             
+            // Speak confirmation reading digits individually
+            speak(tooth + " recorded.", true); 
+            
             toothIndex++;
-            if (nextTooth && ((tooth==11 && nextTooth==21) || (tooth==21 && nextTooth==11) || (tooth==31 && nextTooth==41) || (tooth==41 && nextTooth==31))) {
-                speak("Through midline");
+            calculatePerio();
+
+            // Skip missing teeth for the NEXT tooth
+            while (toothIndex < step.teeth.length && dentalData[step.teeth[toothIndex]].missing) {
+                 toothIndex++;
             }
 
             if (toothIndex >= step.teeth.length) {
-                perioStep++; toothIndex = 0;
-                if (pSeq[perioStep]) speak(pSeq[perioStep].msg);
+                moveToNextPerioStep();
+            } else {
+                // Highlight next tooth
+                let nextTooth = step.teeth[toothIndex];
+                allIds.forEach(id => { let th = document.getElementById(`pth-${id}`); if(th) th.classList.remove('active-cell'); });
+                document.getElementById(`pth-${nextTooth}`).classList.add('active-cell');
+
+                // Check midline
+                if ((tooth==11 && nextTooth==21) || (tooth==21 && nextTooth==11) || (tooth==31 && nextTooth==41) || (tooth==41 && nextTooth==31)) {
+                    setTimeout(() => { speak("Through midline"); }, 1000);
+                }
             }
-            calculatePerio();
+        }
+    }
+
+    function moveToNextPerioStep() {
+        perioStep++; 
+        toothIndex = 0;
+        if (pSeq[perioStep]) {
+            // Find first non-missing tooth in next sequence
+            while (toothIndex < pSeq[perioStep].teeth.length && dentalData[pSeq[perioStep].teeth[toothIndex]].missing) {
+                toothIndex++;
+            }
+            if(toothIndex < pSeq[perioStep].teeth.length) {
+                 speak(pSeq[perioStep].msg);
+                 let nextTooth = pSeq[perioStep].teeth[toothIndex];
+                 allIds.forEach(id => { let th = document.getElementById(`pth-${id}`); if(th) th.classList.remove('active-cell'); });
+                 document.getElementById(`pth-${nextTooth}`).classList.add('active-cell');
+            } else {
+                moveToNextPerioStep(); // Recurse if whole arch is missing
+            }
         }
     }
 
