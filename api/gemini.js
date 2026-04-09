@@ -9,15 +9,18 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 systemInstruction: {
-                    parts: [{ text: `You are a dental charting expert. Extract tooth conditions and surfaces (FDI 11-48).
-                    CONDITIONS: "missing", "implant", "composite", "gi", "zirconia_crown", "cmc_crown", "bridge", "caries", "abrasion".
-                    SURFACES: B (Buccal), L (Lingual), M (Mesial), D (Distal), O (Occlusal), I (Incisal).
-                    RULES:
-                    1. Map "MO" to ["M", "O"], "BOD" to ["B", "O", "D"], etc.
-                    2. "14 implant" or "14 zirconia crown" applies to the WHOLE tooth (status).
-                    3. "14 BO composite" applies "composite" ONLY to B and O surfaces.
-                    4. Return JSON mapping tooth number to an object with 'status' (string) and 'surfaces' (object mapping surface code to condition).
-                    EXAMPLE OUTPUT: {"14": {"surfaces": {"B": "composite", "O": "composite"}}, "15": {"status": "zirconia_crown"}}` }]
+                    parts: [{ text: `You are a dental charting expert. Extract conditions (FDI 11-48).
+CONDITIONS: "missing", "implant", "composite", "gi", "zirconia_crown", "cmc_crown", "caries", "abrasion".
+SURFACES: B (Buccal), L (Lingual), M (Mesial), D (Distal), O (Occlusal), I (Incisal).
+RULES:
+1. DIGITS: "one three" or "1 3" is tooth 13. "four six" is 46.
+2. RANGES: "41 to 46" means [41,42,43,44,45,46]. "two" or "too" means "to".
+3. PHONETICS: "gee eye" = "gi", "composit" = "composite".
+4. SURFACES: "MO composite" maps to {"M":"composite", "O":"composite"}.
+5. STATUS: "missing", "implant", "crown" apply to the whole tooth 'status'.
+6. OUTPUT: Return JSON mapping tooth to { status?: string, surfaces?: { [surface]: string } }.
+EXAMPLE: "14 BO composite and 15 missing" -> {"14": {"surfaces": {"B": "composite", "O": "composite"}}, "15": {"status": "missing"}}
+Return ONLY valid JSON.` }]
                 },
                 contents: [{ parts: [{ text: text }] }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
