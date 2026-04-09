@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio Pro - Ultimate</title>
+    <title>Voice Perio Pro - Bulletproof</title>
     <style>
         :root { --primary: #8e44ad; --success: #27ae60; --danger: #e74c3c; --bg: #f8fafc; --tooth-border: #cbd5e1; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; padding: 10px; }
@@ -54,7 +54,7 @@
     const teethData = {};
     
     let silenceTimer, accumulatedText = "";
-    let appState = "idle"; // "idle", "selecting_mode", "charting"
+    let appState = "idle"; 
 
     window.onload = () => {
         const draw = (ids, target) => {
@@ -88,7 +88,7 @@
         surfaces.forEach(surf => {
             const path = document.getElementById(`${id}-${surf}`);
             if (path) {
-                path.className.baseVal = "surface"; // Reset SVG class
+                path.className.baseVal = "surface"; 
                 if (data.surfaces[surf]) path.classList.add(`c-${data.surfaces[surf]}`);
             }
         });
@@ -117,20 +117,17 @@
         if (!liveBox.classList.contains('thinking')) liveBox.innerText = "Hearing: " + currentText;
 
         clearTimeout(silenceTimer);
-        // 縮短到 800 毫秒，感覺更即時！
         silenceTimer = setTimeout(() => {
             if (currentText.trim()) {
                 if (appState === "selecting_mode") {
                     if (currentText.includes("general")) {
                         appState = "charting";
                         document.getElementById('mode-title').innerText = "AI MODE: GENERAL CHARTING";
-                        speak("General charting selected. Describe conditions.");
+                        speak("General charting selected.");
                     } else if (currentText.includes("perio")) {
                         appState = "charting";
                         document.getElementById('mode-title').innerText = "AI MODE: PERIO CHARTING";
-                        speak("Perio charting selected. Describe conditions.");
-                    } else {
-                        speak("Say General or Perio.");
+                        speak("Perio charting selected.");
                     }
                 } else if (appState === "charting") {
                     sendToGemini(currentText);
@@ -153,21 +150,38 @@
             });
             
             const aiData = await response.json(); 
+            console.log("Raw AI Data:", aiData); // 給開發者看的除錯紀錄
+            
             liveBox.classList.remove('thinking');
             let spokenPhrases = [];
 
-            for (const [id, info] of Object.entries(aiData)) {
+            // 防呆裝甲：強制提取數字與小寫字母
+            for (const [rawKey, info] of Object.entries(aiData)) {
+                
+                // 強制從 key 中提取 2 位數字 (就算 AI 回傳 "tooth_18" 也能抓出 18)
+                const numMatch = rawKey.match(/\d{2}/);
+                if (!numMatch) continue; 
+                const id = numMatch[0];
+
                 if (teethData[id]) {
                     let hasUpdate = false;
                     
-                    if (info.status && teethData[id].status !== info.status) {
-                        teethData[id].status = info.status;
-                        hasUpdate = true;
+                    // 強制小寫處理狀態 (避免 AI 傳回 "Missing" 導致 CSS 讀不到)
+                    if (info.status && typeof info.status === 'string') {
+                        const safeStatus = info.status.toLowerCase().trim();
+                        if (teethData[id].status !== safeStatus) {
+                            teethData[id].status = safeStatus;
+                            hasUpdate = true;
+                        }
                     }
-                    if (info.surfaces) {
+                    
+                    // 強制處理表面大小寫
+                    if (info.surfaces && typeof info.surfaces === 'object') {
                         for (const [surf, cond] of Object.entries(info.surfaces)) {
-                            if (teethData[id].surfaces[surf] !== cond) {
-                                teethData[id].surfaces[surf] = cond;
+                            const safeSurf = surf.toUpperCase().trim();
+                            const safeCond = cond.toLowerCase().trim();
+                            if (teethData[id].surfaces[safeSurf] !== safeCond) {
+                                teethData[id].surfaces[safeSurf] = safeCond;
                                 hasUpdate = true;
                             }
                         }
@@ -176,8 +190,7 @@
                     if (hasUpdate) {
                         updateToothUI(id);
                         
-                        // 建立覆誦文字
-                        const spokenId = id.toString().split('').join(' '); // 14 變成 "1 4"
+                        const spokenId = id.toString().split('').join(' '); 
                         let actions = [];
                         if (info.status) actions.push(info.status.replace('_', ' '));
                         if (info.surfaces) {
@@ -199,6 +212,7 @@
         } catch (error) {
             liveBox.classList.remove('thinking');
             liveBox.innerText = "Network Error.";
+            console.error(error);
         }
     }
 
@@ -206,15 +220,11 @@
         try {
             await navigator.mediaDevices.getUserMedia({ audio: true });
             rec.start();
-            
             appState = "selecting_mode";
             document.getElementById('mode-title').innerText = "SELECTING MODE...";
             document.getElementById('start-btn').innerText = "SYSTEM ACTIVE";
             document.getElementById('start-btn').style.background = "#e74c3c";
-            
             speak("General Charting, or Perio Charting?");
-            document.getElementById('live-box').innerText = "Waiting for you to say 'General' or 'Perio'...";
-            
         } catch (e) { alert("Mic Error: " + e.message); }
     };
 </script>
