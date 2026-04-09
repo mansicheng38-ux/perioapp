@@ -106,7 +106,6 @@
     let audioLog = [];
     let isMicActive = false; 
     
-    // Perio State Machine
     let perioStep = 0;
     let toothIndex = 0;
     const pSeq = [
@@ -118,8 +117,8 @@
         { label: "Lower Buccal BOP", type: "BOP", side: "b", teeth: lIds, msg: "Record BOP, 48 to 38 buccal." },
         { label: "Lower Lingual PD", type: "PD", side: "p", teeth: lIds, msg: "To lingual. Probing depth 48 to 38." },
         { label: "Lower Lingual BOP", type: "BOP", side: "p", teeth: [...lIds].reverse(), msg: "Record BOP, 38 to 48 lingual." },
-        { label: "Recession", type: "REC", msg: "Record recession mid-buccal. E.g., 11 recession 2." },
-        { label: "Mobility", type: "MOB", msg: "Record mobility. E.g., 11 mobility 2." }
+        { label: "Recession", type: "REC", msg: "Record recession mid-buccal." },
+        { label: "Mobility", type: "MOB", msg: "Record mobility." }
     ];
 
     allIds.forEach(id => { dentalData[id] = { missing: false, bridge: false, surfaces: {}, pd: {b:[], p:[]}, bop: {b:[], p:[]}, rec: "", mob: "" }; });
@@ -163,8 +162,6 @@
 
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = 'en-US'; rec.continuous = true;
-
-    // 麥克風防斷線
     rec.onend = () => { if (isMicActive) { try { rec.start(); } catch(e) {} } };
 
     function speak(t) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(t)); }
@@ -177,7 +174,7 @@
             document.getElementById('mic-btn').innerText = "STOP SESSION";
             try { rec.start(); } catch(e) {}
             speak("System started. General or Periodontal?");
-            document.getElementById('log-box').innerText = "SYSTEM LISTENING: Say 'General' or 'Periodontal'";
+            document.getElementById('log-box').innerText = "LISTENING: Say 'General' or 'Periodontal'";
         } else { 
             isMicActive = false; rec.stop(); location.reload(); 
         }
@@ -187,11 +184,11 @@
         let raw = e.results[e.results.length - 1][0].transcript;
         audioLog.push(raw);
         let t = raw.toLowerCase().trim();
-        document.getElementById('log-box').innerText = "HEARD: " + t;
 
         if (t.includes("play back recording")) { speak("Recording: " + audioLog.join(". ")); return; }
 
         if (appState === "init") {
+            document.getElementById('log-box').innerText = "HEARD: " + t;
             if (t.includes("general") || t.includes("journal")) setMode('general', true);
             else if (t.includes("perio")) setMode('perio', true);
         } else if (appState === "general") {
@@ -199,11 +196,22 @@
             try {
                 let res = await fetch('/api/gemini', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text: t}) });
                 let data = await res.json();
-                if(!data.error && Array.isArray(data)) { applyAI(data); speak("Updated."); }
-                else if (data.error) { document.getElementById('log-box').innerText = "API ERROR: " + data.error; }
-                document.getElementById('log-box').innerText = "HEARD: " + t;
-            } catch(err) { console.error(err); }
+                
+                // 這裡修正了錯誤覆蓋的 Bug！
+                if (!data.error && Array.isArray(data)) { 
+                    applyAI(data); 
+                    speak("Updated."); 
+                    document.getElementById('log-box').innerHTML = `<span style="color:#10b981;">SUCCESS: ${t}</span>`;
+                } else if (data.error) { 
+                    document.getElementById('log-box').innerHTML = `<span style="color:#ef4444;">API ERROR: ${data.error}</span>`;
+                } else {
+                    document.getElementById('log-box').innerHTML = `<span style="color:#ef4444;">PARSE ERROR: Invalid JSON Format</span>`;
+                }
+            } catch(err) { 
+                document.getElementById('log-box').innerHTML = `<span style="color:#ef4444;">NETWORK ERROR: ${err.message}</span>`;
+            }
         } else if (appState === "perio") {
+            document.getElementById('log-box').innerText = "HEARD: " + t;
             processPerio(t);
         }
     };
@@ -214,20 +222,22 @@
         document.getElementById('btn-perio').classList.toggle('active', m === 'perio');
         document.getElementById('general-ui').style.display = m === 'general' ? 'block' : 'none';
         document.getElementById('perio-ui').style.display = m === 'perio' ? 'block' : 'none';
-        if(voice) { speak(m === 'general' ? "General charting mode." : pSeq[0].msg); }
+        if(voice) { speak(m === 'general' ? "General active." : pSeq[0].msg); }
+        document.getElementById('log-box').innerText = "MODE: " + m.toUpperCase();
     }
 
     function applyAI(actions) {
         actions.forEach(a => {
-            a.teeth.forEach(id => {
-                if (a.type === "missing") updateStatus(id, 'missing', true);
-                if (a.type === "bridge") updateStatus(id, 'bridge', true);
-                if (a.type === "surface") a.surfaces.forEach(s => setSurface(id, s, a.material));
-            });
+            if(a.teeth) {
+                a.teeth.forEach(id => {
+                    if (a.type === "missing") updateStatus(id, 'missing', true);
+                    if (a.type === "bridge") updateStatus(id, 'bridge', true);
+                    if (a.type === "surface" && a.surfaces) a.surfaces.forEach(s => setSurface(id, s, a.material));
+                });
+            }
         });
     }
 
-    // --- 這次完整保留的 Perio 邏輯 ---
     function processPerio(t) {
         const step = pSeq[perioStep];
         if (!step) return;
@@ -252,74 +262,4 @@
         let tooth = step.teeth[toothIndex];
         let nextTooth = step.teeth[toothIndex + 1];
 
-        allIds.forEach(id => { let th = document.getElementById(`pth-${id}`); if(th) th.classList.remove('active-cell'); });
-        document.getElementById(`pth-${tooth}`).classList.add('active-cell');
-
-        let digits = t.replace(/\s+/g, '').match(/\d{3}/);
-        if (digits) {
-            let vals = digits[0].split('');
-            let prefix = step.side === "b" ? "pdb" : "pdp";
-            
-            if (step.type === "PD") {
-                dentalData[tooth].pd[step.side] = vals;
-                document.getElementById(`${prefix}-${tooth}`).value = vals.join('');
-            } else {
-                dentalData[tooth].bop[step.side] = vals.map(Number);
-                if (vals.includes('1')) document.getElementById(`${prefix}-${tooth}`).style.color = "red";
-            }
-            
-            toothIndex++;
-            if (nextTooth && ((tooth==11 && nextTooth==21) || (tooth==21 && nextTooth==11) || (tooth==31 && nextTooth==41) || (tooth==41 && nextTooth==31))) {
-                speak("Through midline");
-            }
-
-            if (toothIndex >= step.teeth.length) {
-                perioStep++; toothIndex = 0;
-                if (pSeq[perioStep]) speak(pSeq[perioStep].msg);
-            }
-            calculatePerio();
-        }
-    }
-
-    function manualStatus(id, key) { updateStatus(id, key, !dentalData[id][key]); }
-    function manualSurface(id, s) {
-        const mats = [null, 'composite', 'gi'];
-        let cur = dentalData[id].surfaces[s];
-        setSurface(id, s, mats[(mats.indexOf(cur) + 1) % mats.length]);
-    }
-    function updateStatus(id, key, val) {
-        dentalData[id][key] = val;
-        if(key === 'missing') document.getElementById(`unit-${id}`).classList.toggle('t-missing', val);
-        if(key === 'bridge') document.getElementById(`br-${id}`).style.display = val ? 'block' : 'none';
-    }
-    function setSurface(id, s, mat) {
-        dentalData[id].surfaces[s] = mat;
-        document.getElementById(`${id}-${s}`).className.baseVal = "surface" + (mat ? ` c-${mat}` : "");
-    }
-
-    function manualPerio() { calculatePerio(); } 
-
-    function calculatePerio() {
-        const sxt = { 1:[18,17,16,15,14], 2:[13,12,11,21,22,23], 3:[24,25,26,27,28], 6:[48,47,46,45,44], 5:[43,42,41,31,32,33], 4:[34,35,36,37,38] };
-        let bopPos=0, bopTot=0;
-        
-        for (let s in sxt) {
-            let maxPd = 0;
-            sxt[s].forEach(id => {
-                ['pdb','pdp'].forEach(p => {
-                    let val = document.getElementById(`${p}-${id}`).value;
-                    for (let c of val) { let n = parseInt(c); if(n > maxPd) maxPd = n; }
-                });
-                
-                [...dentalData[id].bop.b, ...dentalData[id].bop.p].forEach(v => {
-                    if (v !== undefined) { bopTot++; if(v === 1) bopPos++; }
-                });
-            });
-            let code = maxPd === 0 ? "-" : (maxPd <= 3 ? "1/2" : (maxPd <= 5 ? "3" : "4"));
-            document.getElementById(`bpe-${s}`).innerText = code;
-        }
-        document.getElementById('bop-stat').innerText = bopTot === 0 ? "0%" : Math.round((bopPos/bopTot)*100) + "%";
-    }
-</script>
-</body>
-</html>
+        allIds.forEach(id => {
