@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dental Chart Pro - Adult Only</title>
+    <title>Voice Dental Pro - Absolute Local</title>
     <style>
         :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f8fafc; --divider: rgba(52, 152, 219, 0.6); }
         body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; margin: 0; padding: 0; }
-        .header { background: white; padding: 15px; border-bottom: 4px solid var(--primary); position: sticky; top: 0; z-index: 1001; }
+        
+        .header { background: white; padding: 20px; border-bottom: 4px solid var(--primary); }
+        #error-overlay { display: none; background: var(--danger); color: white; padding: 15px; font-weight: bold; position: fixed; top: 0; width: 100%; z-index: 2000; }
         
         .chart-wrapper { 
-            position: relative; max-width: 1000px; margin: 40px auto; 
+            position: relative; max-width: 1000px; margin: 30px auto; 
             background: white; padding: 60px 20px; border-radius: 12px; 
             box-shadow: 0 5px 25px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 80px;
         }
@@ -24,7 +26,7 @@
         .odontogram { width: 48px; height: 48px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; position: relative; }
         .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; transition: 0.2s; }
         
-        /* 材質與缺失樣式 */
+        /* 繪圖樣式 */
         .c-composite { fill: #3498db !important; }
         .c-gi { fill: #9b59b6 !important; }
         
@@ -33,12 +35,14 @@
         .t-missing .odontogram { opacity: 0.2; }
 
         .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 30px; border-top: 2px solid #e2e8f0; z-index: 1000; }
-        #start-btn { padding: 18px 80px; font-size: 22px; border-radius: 60px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        #start-btn { padding: 18px 80px; font-size: 22px; border-radius: 60px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         #live-box { background: #f1f5f9; padding: 15px; border-radius: 12px; margin-top: 15px; font-weight: bold; font-size: 18px; color: #475569; min-height: 28px; border: 2px dashed #cbd5e1; }
-        .recording { background: #fee2e2 !important; border-color: #f87171 !important; }
+        .recording { background: #fee2e2 !important; border-color: #f87171 !important; color: #b91c1c !important; }
     </style>
 </head>
 <body>
+
+<div id="error-overlay"></div>
 
 <div class="header">
     <div id="mode-title" style="font-weight: 900; font-size: 26px; color: #1e293b;">STANDBY</div>
@@ -47,9 +51,7 @@
 
 <div class="chart-wrapper">
     <div class="v-line"></div><div class="h-line"></div>
-    
     <div class="row" id="upper-grid"></div>
-    
     <div class="row" id="lower-grid"></div>
 </div>
 
@@ -62,7 +64,7 @@
     const alIds = ["48","47","46","45","44","43","42","41", "31","32","33","34","35","36","37","38"];
 
     const teethData = {};
-    let appState = "idle"; // idle, selecting, charting
+    let appState = "idle"; 
 
     window.onload = () => {
         const render = (ids, target) => {
@@ -75,4 +77,120 @@
                     <div style="position:relative; width:48px; height:48px;">
                         <svg class="odontogram" viewBox="0 0 100 100">
                             <path id="${id}-B" class="surface" d="M0 0 L100 0 L75 25 L25 25 Z" />
-                            <path id="${
+                            <path id="${id}-L" class="surface" d="M0 100 L100 100 L75 75 L25 75 Z" />
+                            <path id="${id}-M" class="surface" d="M0 0 L25 25 L25 75 L0 100 Z" />
+                            <path id="${id}-D" class="surface" d="M100 0 L75 25 L75 75 L100 100 Z" />
+                            <rect id="${id}-O" class="surface" x="25" y="25" width="50" height="50" />
+                        </svg>
+                        <svg class="missing-x" viewBox="0 0 100 100"><line x1="0" y1="0" x2="100" y2="100" stroke="red" stroke-width="12" /><line x1="100" y1="0" x2="0" y2="100" stroke="red" stroke-width="12" /></svg>
+                    </div>
+                </div>`;
+            });
+        };
+        render(auIds, 'upper-grid'); render(alIds, 'lower-grid');
+    };
+
+    function speak(t) {
+        window.speechSynthesis.cancel();
+        const m = new SpeechSynthesisUtterance(t);
+        m.lang = 'en-US';
+        m.rate = 1.0;
+        window.speechSynthesis.speak(m);
+    }
+
+    // 檢查語音引擎是否存在
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Your browser does not support Speech Recognition. Please use Chrome.");
+    }
+
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US'; 
+    rec.continuous = true;
+    rec.interimResults = false;
+
+    rec.onerror = (event) => {
+        const overlay = document.getElementById('error-overlay');
+        overlay.innerText = "MIC ERROR: " + event.error + ". Please check permissions.";
+        overlay.style.display = "block";
+    };
+
+    rec.onresult = (event) => {
+        const text = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+        document.getElementById('live-box').innerText = "Heard: " + text;
+
+        if (appState === "selecting") {
+            if (text.includes("general")) {
+                appState = "charting";
+                document.getElementById('mode-title').innerText = "GENERAL CHARTING";
+                speak("General mode. Start recording teeth.");
+            } else if (text.includes("perio")) {
+                appState = "charting";
+                document.getElementById('mode-title').innerText = "PERIO CHARTING";
+                speak("Perio mode selected.");
+            }
+        } else if (appState === "charting") {
+            processLocal(text);
+        }
+    };
+
+    function processLocal(t) {
+        // 語音轉數字映射
+        const words = t.replace("one one", "11").replace("one two", "12").replace("one three", "13")
+                       .replace("one four", "14").replace("one five", "15").replace("one six", "16")
+                       .replace("one seven", "17").replace("one eight", "18");
+        
+        const toothMatch = words.match(/\b([1-4][1-8])\b/g);
+        if (!toothMatch) return;
+
+        toothMatch.forEach(id => {
+            if (!teethData[id]) return;
+
+            // 缺失邏輯 (包含聽錯容錯)
+            if (words.includes("missing") || words.includes("nissan") || words.includes("won't fall") || words.includes("listen")) {
+                teethData[id].status = "missing";
+            }
+            
+            // 材質邏輯
+            if (words.includes("composite") || words.includes("resin")) {
+                ["b","l","m","d","o"].forEach(s => {
+                    if (words.includes(" " + s) || words.endsWith(" " + s)) teethData[id].surfaces[s.toUpperCase()] = "composite";
+                });
+            }
+            updateUI(id);
+        });
+        speak("Updated");
+    }
+
+    function updateUI(id) {
+        const container = document.getElementById(`container-${id}`);
+        if (!container) return;
+        container.classList.toggle('t-missing', teethData[id].status === 'missing');
+        ['B','L','M','D','O'].forEach(s => {
+            const p = document.getElementById(`${id}-${s}`);
+            if (p) p.className.baseVal = "surface " + (teethData[id].surfaces[s] ? `c-${teethData[id].surfaces[s]}` : "");
+        });
+    }
+
+    function toggleSession() {
+        const btn = document.getElementById('start-btn');
+        if (appState === "idle") {
+            try {
+                rec.start();
+                appState = "selecting";
+                btn.innerText = "STOP SESSION";
+                btn.style.background = "#e74c3c";
+                document.getElementById('live-box').classList.add('recording');
+                document.getElementById('error-overlay').style.display = "none";
+                speak("General or Perio?");
+            } catch (e) {
+                document.getElementById('error-overlay').innerText = "Launch Error: " + e.message;
+                document.getElementById('error-overlay').style.display = "block";
+            }
+        } else {
+            location.reload(); 
+        }
+    }
+</script>
+</body>
+</html>
