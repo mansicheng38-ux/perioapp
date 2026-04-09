@@ -173,8 +173,8 @@
             document.getElementById('mic-btn').classList.add('recording');
             document.getElementById('mic-btn').innerText = "STOP SESSION";
             try { rec.start(); } catch(e) {}
-            speak("System started. General or Periodontal?");
-            document.getElementById('log-box').innerText = "LISTENING: Say 'General' or 'Periodontal'";
+            speak("System started. Please click General or Periodontal button to begin.");
+            document.getElementById('log-box').innerText = "CLICK A BLUE BUTTON (General / Periodontal) TO START";
         } else { 
             isMicActive = false; rec.stop(); location.reload(); 
         }
@@ -188,16 +188,14 @@
         if (t.includes("play back recording")) { speak("Recording: " + audioLog.join(". ")); return; }
 
         if (appState === "init") {
-            document.getElementById('log-box').innerText = "HEARD: " + t;
-            if (t.includes("general") || t.includes("journal")) setMode('general', true);
-            else if (t.includes("perio")) setMode('perio', true);
+            // 移除了用語音判斷 general，強制要求使用者手動點擊右上角按鈕，徹底解決雜音誤判
+            document.getElementById('log-box').innerText = "PLEASE CLICK A MODE BUTTON: " + t;
         } else if (appState === "general") {
             document.getElementById('log-box').innerText = "AI Analyzing: " + t;
             try {
                 let res = await fetch('/api/gemini', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text: t}) });
                 let data = await res.json();
                 
-                // 這裡修正了錯誤覆蓋的 Bug！
                 if (!data.error && Array.isArray(data)) { 
                     applyAI(data); 
                     speak("Updated."); 
@@ -216,14 +214,18 @@
         }
     };
 
-    function setMode(m, voice=false) {
+    // 點擊按鈕切換模式，確保不被雜音干擾
+    function setMode(m, isClick=false) {
+        if (!isMicActive && isClick) toggleMic(); // 如果還沒按 START，點擊模式會自動啟動麥克風
+        
         appState = m;
         document.getElementById('btn-gen').classList.toggle('active', m === 'general');
         document.getElementById('btn-perio').classList.toggle('active', m === 'perio');
         document.getElementById('general-ui').style.display = m === 'general' ? 'block' : 'none';
         document.getElementById('perio-ui').style.display = m === 'perio' ? 'block' : 'none';
-        if(voice) { speak(m === 'general' ? "General active." : pSeq[0].msg); }
-        document.getElementById('log-box').innerText = "MODE: " + m.toUpperCase();
+        
+        speak(m === 'general' ? "General active. Start speaking." : pSeq[0].msg);
+        document.getElementById('log-box').innerText = "MODE SET: " + m.toUpperCase();
     }
 
     function applyAI(actions) {
