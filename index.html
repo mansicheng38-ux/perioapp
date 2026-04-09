@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio - English Pro</title>
+    <title>Voice Perio - Smart English Pro</title>
     <style>
         :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f4f7f6; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; text-align: center; }
@@ -21,7 +21,7 @@
 
 <div class="header">
     <div style="font-weight: bold; font-size: 20px;">MODE: GENERAL CHARTING</div>
-    <div id="live-box">Click Start to begin English Voice Session</div>
+    <div id="live-box">Listening for teeth (e.g., "one four missing")...</div>
 </div>
 
 <div class="grid" id="upper-grid"></div>
@@ -35,11 +35,96 @@
     const uIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
     const lIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
     const teethData = {};
-    let silenceTimer;
-    let accumulatedText = "";
+    let silenceTimer, accumulatedText = "";
 
     window.onload = () => {
         const draw = (ids, target) => {
             const el = document.getElementById(target);
             ids.forEach(id => {
-                teethData
+                teethData[id] = { missing: false };
+                const div = document.createElement('div');
+                div.className = 'tooth'; div.id = `t-${id}`; div.innerText = id;
+                el.appendChild(div);
+            });
+        };
+        draw(uIds, 'upper-grid'); draw(lIds, 'lower-grid');
+    };
+
+    function speak(t) {
+        window.speechSynthesis.cancel();
+        const m = new SpeechSynthesisUtterance(t);
+        m.lang = 'en-US';
+        window.speechSynthesis.speak(m);
+    }
+
+    // --- NEW: Word-to-Digit Translator ---
+    function translateWords(text) {
+        const map = {
+            'one': '1', 'two': '2', 'three': '3', 'four': '4', 'for': '4', 'fore': '4',
+            'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'zero': '0',
+            'to': '2', 'too': '2', 'eighteen': '18', 'seventeen': '17', 'sixteen': '16'
+        };
+        let words = text.split(' ');
+        let processed = words.map(w => map[w] || w).join(''); // Join digits together
+        return processed;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US';
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    rec.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) accumulatedText += event.results[i][0].transcript + " ";
+            else interim += event.results[i][0].transcript;
+        }
+
+        const currentText = (accumulatedText + interim).toLowerCase();
+        document.getElementById('live-box').innerText = "Hearing: " + currentText;
+
+        clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(() => {
+            if (currentText.trim()) {
+                processVoice(currentText);
+                accumulatedText = ""; 
+            }
+        }, 2000); 
+    };
+
+    function processVoice(text) {
+        // Translate "one for" into "14"
+        const translated = translateWords(text);
+        console.log("Translated string:", translated);
+
+        // Find 2-digit combinations (like 14, 18, 26)
+        const nums = translated.match(/\d{2}/g);
+        const isMissing = text.includes("miss") || text.includes("none") || text.includes("absent");
+
+        if (isMissing && nums) {
+            let marked = [];
+            nums.forEach(n => {
+                if (teethData[n]) {
+                    teethData[n].missing = true;
+                    document.getElementById(`t-${n}`).classList.add('missing');
+                    marked.push(n);
+                }
+            });
+            if(marked.length > 0) speak(`Recorded ${marked.join(", ")} missing.`);
+        }
+    }
+
+    document.getElementById('start-btn').onclick = async () => {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            rec.start();
+            document.getElementById('start-btn').innerText = "SYSTEM ACTIVE";
+            document.getElementById('start-btn').style.background = "#e74c3c";
+            speak("System online. Say tooth numbers clearly.");
+        } catch (e) { alert("Mic Error: " + e.message); }
+    };
+</script>
+</body>
+</html>
