@@ -1,55 +1,55 @@
-// --- 核心：語音對照表，處理廣東話聽錯做英文嘅情況 ---
-function fixCantonesePhonetics(text) {
-    let fixed = text.toLowerCase();
-    
-    // 解決常見誤判：將聽錯嘅英文轉返做廣東話數字
-    const phoneticMap = {
-        'yellow': '16',   // 「一六」最常被聽錯做 yellow
-        'hello': '16',    // 另一種常見誤判
-        'sixteen': '16',
-        'low': '6',
-        'chat': '7',      // 「七」常被聽成 chat
-        'easy': '2',      // 「二」常被聽成 easy
-        'say': '4'        // 「四」常被聽成 say
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Perio Pro - English Auto-Pilot</title>
+    <style>
+        :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f4f7f6; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; text-align: center; }
+        .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-width: 900px; margin: 0 auto 20px; }
+        .tooth { background: white; border: 1px solid #ddd; padding: 15px 5px; border-radius: 8px; font-weight: bold; height: 50px; display: flex; align-items: center; justify-content: center; position: relative; transition: 0.3s; }
+        .tooth.missing { background: #455a64 !important; color: white; }
+        .tooth.missing::after { content: '✕'; position: absolute; font-size: 35px; color: rgba(255,0,0,0.5); }
+        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
+        #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        #live-box { background: #e8f4fd; padding: 10px; border-radius: 8px; color: #2980b9; margin-top: 10px; font-weight: bold; min-height: 24px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div style="font-weight: bold; font-size: 18px;">MODE: GENERAL CHARTING (MISSING)</div>
+    <div id="live-box">Click Start and say tooth numbers...</div>
+</div>
+
+<div class="grid" id="upper-grid"></div>
+<div class="grid" id="lower-grid"></div>
+
+<div class="controls">
+    <button id="start-btn">Start Session</button>
+</div>
+
+<script>
+    const uIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
+    const lIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
+    const teethData = {};
+    let silenceTimer;
+    let accumulatedText = "";
+
+    // 1. Initialize UI Immediately
+    window.onload = () => {
+        const draw = (ids, target) => {
+            const el = document.getElementById(target);
+            ids.forEach(id => {
+                teethData[id] = { missing: false };
+                const div = document.createElement('div');
+                div.className = 'tooth'; div.id = `t-${id}`; div.innerText = id;
+                el.appendChild(div);
+            });
+        };
+        draw(uIds, 'upper-grid'); draw(lIds, 'lower-grid');
     };
 
-    for (let key in phoneticMap) {
-        fixed = fixed.replace(new RegExp(key, 'g'), phoneticMap[key]);
-    }
-
-    // 處理中文數字
-    const cnMap = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'零':0};
-    for (let key in cnMap) {
-        fixed = fixed.replace(new RegExp(key, 'g'), cnMap[key]);
-    }
-    
-    // 修正廣東話特有聽錯字
-    fixed = fixed.replace(/路|落|錄/g, '6').replace(/衣|伊|醫/g, '1');
-    
-    return fixed;
-}
-
-// 修改後的 processData function
-function processData(text) {
-    let processed = fixCantonesePhonetics(text);
-    console.log("修正後文字:", processed);
-
-    // 抓取所有數字 (例如 16, 17)
-    const nums = processed.match(/\d{2}/g); 
-    
-    // 廣東話缺失關鍵字
-    const isMissing = /缺失|冇|唔見|甩|蚊|missing|none/.test(processed);
-
-    if (isMissing && nums) {
-        nums.forEach(n => {
-            if (teethData[n]) {
-                teethData[n].missing = true;
-                document.getElementById(`t-${n}`).classList.add('missing');
-            }
-        });
-        speak(`紀錄完畢，${nums.join(", ")}號缺失`);
-    } else if (nums) {
-        // 如果聽到數字但冇關鍵字，比個提示
-        speak(`聽到數字 ${nums.join(" ")}, 請講埋缺失`);
-    }
-}
+    // 2. Clear Voice Feedback
