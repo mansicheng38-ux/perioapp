@@ -2,54 +2,91 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Voice Dental Chart</title>
+    <title>Voice Dental Chart - Debug Mode</title>
     <style>
         body { font-family: sans-serif; text-align: center; background: #f8fafc; margin: 0; }
-        #err { background: #ff4d4f; color: white; padding: 10px; display: none; }
-        #heard { background: #e6f7ff; padding: 10px; font-weight: bold; border-bottom: 2px solid #1890ff; }
-        .wrapper { position: relative; max-width: 1000px; margin: 20px auto; background: white; padding: 40px; }
+        #status-bar { background: #1e293b; color: white; padding: 15px; font-weight: bold; position: sticky; top: 0; }
+        #error-msg { background: #ef4444; color: white; padding: 10px; display: none; font-size: 13px; }
+        .wrapper { position: relative; max-width: 1050px; margin: 20px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .v-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #3498db; opacity: 0.3; }
         .h-line { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: #3498db; opacity: 0.3; }
         .row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 5px; position: relative; z-index: 2; margin-bottom: 60px; }
-        .tooth { border: 1px solid #ddd; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+        .tooth { border: 1px solid #ddd; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
         .missing { background: #fee2e2; position: relative; }
-        .missing::after { content: "X"; color: red; font-size: 30px; position: absolute; }
-        .btn { padding: 15px 60px; font-size: 20px; background: #22c55e; color: white; border: none; border-radius: 50px; cursor: pointer; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); }
+        .missing::after { content: "X"; color: #ef4444; font-size: 35px; position: absolute; }
+        .controls { position: fixed; bottom: 0; width: 100%; background: white; padding: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; gap: 20px; }
+        button { padding: 15px 40px; font-size: 16px; cursor: pointer; border-radius: 50px; border: none; color: white; font-weight: bold; }
+        #mic-btn { background: #22c55e; }
+        #test-btn { background: #6366f1; }
     </style>
 </head>
 <body>
-    <div id="err"></div>
-    <div id="heard">Heard: (Wait...)</div>
-    <div class="wrapper">
-        <div class="v-line"></div><div class="h-line"></div>
-        <div class="row" id="u"></div> <div class="row" id="l"></div> </div>
-    <button class="btn" onclick="start()">START SESSION</button>
 
-    <script>
-        const uIds = ["18","17","16","15","14","13","12","11","21","22","23","24","25","26","27","28"];
-        const lIds = ["48","47","46","45","44","43","42","41","31","32","33","34","35","36","37","38"];
-        const draw = (arr, t) => arr.forEach(id => document.getElementById(t).innerHTML += `<div class="tooth" id="t-${id}">${id}</div>`);
-        draw(uIds, 'u'); draw(lIds, 'l');
+<div id="status-bar">Heard: (Waiting...)</div>
+<div id="error-msg"></div>
 
-        const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        rec.lang = 'en-US'; rec.continuous = true;
+<div class="wrapper">
+    <div class="v-line"></div><div class="h-line"></div>
+    <div class="row" id="u-row"></div>
+    <div class="row" id="l-row"></div>
+</div>
 
-        rec.onresult = async (event) => {
-            const text = event.results[event.results.length - 1][0].transcript;
-            document.getElementById('heard').innerText = "Heard: " + text;
-            const res = await fetch('/api/gemini', { method: 'POST', body: JSON.stringify({ text }), headers: {'Content-Type': 'application/json'} });
+<div class="controls">
+    <button id="mic-btn" onclick="startMic()">START MIC</button>
+    <button id="test-btn" onclick="manualTest()">TEST: 11 MISSING</button>
+</div>
+
+<script>
+    // 排列：左側 18-11
+    const uIds = ["18","17","16","15","14","13","12","11","21","22","23","24","25","26","27","28"];
+    const lIds = ["48","47","46","45","44","43","42","41","31","32","33","34","35","36","37","38"];
+    
+    const draw = (list, target) => {
+        const el = document.getElementById(target);
+        list.forEach(id => { el.innerHTML += `<div class="tooth" id="t-${id}">${id}</div>`; });
+    };
+    draw(uIds, 'u-row'); draw(lIds, 'l-row');
+
+    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    rec.lang = 'en-US'; rec.continuous = true;
+
+    async function process(text) {
+        document.getElementById('status-bar').innerText = "Analyzing: " + text;
+        document.getElementById('error-msg').style.display = "none";
+        
+        try {
+            const res = await fetch('/api/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
             const data = await res.json();
+
             if (data.fatalError) {
-                document.getElementById('err').innerText = data.fatalError;
-                document.getElementById('err').style.display = "block";
+                const err = document.getElementById('error-msg');
+                err.innerHTML = "<b>API ERROR:</b> " + data.fatalError + "<br><b>Debug URL:</b> " + (data.debugUrl || "N/A");
+                err.style.display = "block";
             } else if (Array.isArray(data)) {
                 data.forEach(item => {
-                    const el = document.getElementById('t-' + item.id);
-                    if (el && item.status === 'missing') el.classList.add('missing');
+                    const tooth = document.getElementById('t-' + item.id);
+                    if (tooth && item.status === 'missing') tooth.classList.add('missing');
                 });
             }
-        };
-        function start() { rec.start(); }
-    </script>
+        } catch (e) { document.getElementById('error-msg').innerText = "Connection Failed."; }
+        document.getElementById('status-bar').innerText = "Ready.";
+    }
+
+    rec.onresult = (event) => { process(event.results[event.results.length - 1][0].transcript); };
+
+    function startMic() {
+        rec.start();
+        document.getElementById('mic-btn').innerText = "RECORDING...";
+        document.getElementById('mic-btn').style.background = "#ef4444";
+    }
+
+    function manualTest() {
+        process("one one missing");
+    }
+</script>
 </body>
 </html>
