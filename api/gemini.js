@@ -10,7 +10,7 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 systemInstruction: {
-                    parts: [{ text: "You are an expert dental assistant. The user will dictate missing teeth. Extract the tooth numbers (FDI system, 11-48). Handle natural language like 'thirteen to fifteen missing' or 'extract tooth one six'. Return ONLY a clean JSON array of integers. Example: [18, 17, 16]. If no teeth are mentioned, return []." }]
+                    parts: [{ text: "You are an expert dental assistant. Extract missing teeth (FDI system 11-18, 21-28, 31-38, 41-48). RULES:\n1. Expand ALL ranges: '41 to 46' MUST become [41, 42, 43, 44, 45, 46].\n2. The word 'two' or 'too' between numbers usually means 'to'. Example: 'four one two four six' means '41 to 46'.\n3. Return ONLY a clean JSON array of integers. Example: [18, 17, 16]. If no teeth mentioned, return []." }]
                 },
                 contents: [{ parts: [{ text: text }] }],
                 generationConfig: { responseMimeType: "application/json" }
