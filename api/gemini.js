@@ -42,7 +42,6 @@ export default async function handler(req, res) {
         if (data.error) return res.status(200).json({ error: data.error.message });
         
         let aiResult = data.candidates[0].content.parts[0].text;
-        // 強制洗掉 Gemini 可能自作聰明加上的 markdown 符號
         aiResult = aiResult.replace(/```json/gi, '').replace(/```/g, '').trim();
         res.status(200).json(JSON.parse(aiResult));
     } catch (error) {
