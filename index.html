@@ -2,114 +2,112 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dental Chart Pro - Ultra Stable</title>
+    <title>Ultimate Voice Dental Chart</title>
     <style>
-        :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f8fafc; --divider: rgba(52, 152, 219, 0.7); }
-        body { font-family: sans-serif; text-align: center; background: var(--bg); margin: 0; padding: 0; }
-        .header { background: white; padding: 20px; border-bottom: 4px solid var(--primary); }
-        #log-box { background: #1e293b; color: #38bdf8; padding: 15px; border-radius: 10px; margin: 10px auto; max-width: 900px; font-family: monospace; font-weight: bold; }
-
-        .chart-wrapper { 
-            position: relative; max-width: 1100px; margin: 20px auto; 
-            background: white; padding: 60px 20px; border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 70px;
-        }
-        .v-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: var(--divider); transform: translateX(-50%); z-index: 1; }
-        .h-line { position: absolute; left: 0; right: 0; top: 50%; height: 4px; background: var(--divider); transform: translateY(-50%); z-index: 1; }
-
-        .row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 10px; position: relative; z-index: 2; }
-        .tooth { border: 2px solid #cbd5e1; height: 65px; display: flex; align-items: center; justify-content: center; font-weight: bold; background: white; font-size: 16px; border-radius: 4px; }
+        :root { --primary: #2563eb; --bg: #f8fafc; --success: #16a34a; --danger: #dc2626; --text: #1e293b; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; text-align: center; }
         
-        /* 缺失標記 (紅色大叉叉) */
-        .missing { background: #fee2e2 !important; }
-        .missing::after {
-            content: "X"; color: #e74c3c; font-size: 55px; position: absolute;
-            top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 100;
-        }
+        .header { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; position: sticky; top: 10px; z-index: 1000; }
+        #log-box { background: #1e293b; color: #38bdf8; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 16px; margin-top: 10px; }
+        
+        /* Grid Layouts */
+        .chart-section { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 5px; margin-bottom: 20px; align-items: end; }
+        
+        /* Odontogram (General) */
+        .tooth-card { display: flex; flex-direction: column; align-items: center; position: relative; }
+        .tooth-id { font-weight: bold; font-size: 14px; margin-bottom: 5px; }
+        .odontogram { width: 50px; height: 50px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; position: relative; }
+        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; }
+        
+        /* Restorations & Status */
+        .c-composite { fill: #3b82f6 !important; }
+        .c-gi { fill: #a855f7 !important; }
+        .missing::after { content: "X"; color: #ef4444; font-size: 50px; position: absolute; top: 0; left: 0; font-weight: 100; pointer-events: none; }
+        .bridge-line { position: absolute; top: 25px; height: 4px; background: #3b82f6; width: 100%; z-index: 5; display: none; }
+        
+        /* Perio Table */
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+        th, td { border: 1px solid #cbd5e1; padding: 4px; text-align: center; }
+        th { background: #f1f5f9; }
+        .active-tooth { background: #fef08a !important; } /* Highlights tooth being probed */
+        
+        /* BPE & Dashboard */
+        .dashboard { display: flex; justify-content: space-around; background: #e0f2fe; padding: 15px; border-radius: 8px; margin-bottom: 80px; }
+        .bpe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: #000; border: 2px solid #000; }
+        .bpe-grid div { background: white; padding: 15px 20px; font-weight: bold; font-size: 20px; }
 
-        .controls { position: fixed; bottom: 0; width: 100%; background: white; padding: 30px; border-top: 1px solid #eee; z-index: 1000; }
-        #start-btn { padding: 20px 100px; font-size: 24px; border-radius: 60px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        /* Controls */
+        .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); z-index: 1000; }
+        button { padding: 15px 40px; font-size: 18px; border-radius: 50px; border: none; background: var(--success); color: white; font-weight: bold; cursor: pointer; }
+        button:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1 style="margin:0;">CLINICAL CHARTING (LOCAL)</h1>
-    <div id="log-box">HEARD: (Waiting for Start...)</div>
+    <h1 id="mode-title" style="margin:0;">SYSTEM STANDBY</h1>
+    <div id="log-box">HEARD: Click Start Session to begin</div>
 </div>
 
-<div class="chart-wrapper">
-    <div class="v-line"></div><div class="h-line"></div>
-    <div class="row" id="upper"></div> <div class="row" id="lower"></div> </div>
+<div class="chart-section" id="general-chart">
+    <h3>General Charting</h3>
+    <div class="row" id="upper-grid"></div>
+    <div class="row" id="lower-grid"></div>
+</div>
+
+<div class="chart-section" id="perio-chart">
+    <h3>Periodontal Charting</h3>
+    <table id="perio-table-upper"></table>
+    <table id="perio-table-lower"></table>
+</div>
+
+<div class="dashboard">
+    <div>
+        <h3>BPE Score</h3>
+        <div class="bpe-grid">
+            <div id="bpe-s1">-</div><div id="bpe-s2">-</div><div id="bpe-s3">-</div>
+            <div id="bpe-s6">-</div><div id="bpe-s5">-</div><div id="bpe-s4">-</div>
+        </div>
+    </div>
+    <div>
+        <h3>Bleeding on Probing</h3>
+        <div style="font-size: 32px; font-weight: bold; color: #dc2626;" id="bop-percent">0%</div>
+    </div>
+</div>
 
 <div class="controls">
-    <button id="start-btn" onclick="toggleSession()">START SESSION</button>
+    <button id="start-btn" onclick="toggleMic()">START SESSION</button>
 </div>
 
 <script>
-    // 嚴格成人牙位 FDI
-    const uIds = ["18","17","16","15","14","13","12","11","21","22","23","24","25","26","27","28"];
-    const lIds = ["48","47","46","45","44","43","42","41","31","32","33","34","35","36","37","38"];
+    /* --- DATA STRUCTURES --- */
+    const upperTeeth = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
+    const lowerTeeth = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
+    const allTeeth = [...upperTeeth, ...lowerTeeth];
     
-    const draw = (arr, t) => arr.forEach(id => document.getElementById(t).innerHTML += `<div class="tooth" id="t-${id}">${id}</div>`);
-    draw(uIds, 'upper'); draw(lIds, 'lower');
-
-    function processLocal(text) {
-        let t = text.toLowerCase().trim();
-        document.getElementById('log-box').innerText = "HEARD: " + t;
-
-        // 數字語音暴力映射
-        const mapping = {
-            "one one": "11", "eleven": "11", "one one": "11", "1 1": "11",
-            "one four": "14", "one eight": "18", "four eight": "48"
+    let dentalData = {};
+    allTeeth.forEach(id => {
+        dentalData[id] = {
+            missing: false, bridge: false, surfaces: {}, 
+            pd: { buccal: ["","",""], palatal: ["","",""] }, 
+            bop: { buccal: [0,0,0], palatal: [0,0,0] },
+            recession: "", mobility: ""
         };
-        for (let key in mapping) { t = t.replace(new RegExp(key, 'g'), mapping[key]); }
+    });
 
-        // 捕捉 FDI 編號
-        const toothMatch = t.match(/\b(1[1-8]|2[1-8]|3[1-8]|4[1-8])\b/g);
-        if (!toothMatch) return;
-
-        toothMatch.forEach(id => {
-            const el = document.getElementById('t-' + id);
-            if (!el) return;
-
-            // 判斷是否為缺失 (含容錯)
-            if (t.includes("missing") || t.includes("nissan") || t.includes("won't fall") || t.includes("listen") || t.includes("mising")) {
-                el.classList.add('missing');
-                speak("Recorded " + id);
-            }
-        });
-    }
-
-    function speak(msg) {
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(msg));
-    }
-
-    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    rec.lang = 'en-US'; rec.continuous = true;
-
-    rec.onresult = (event) => {
-        const result = event.results[event.results.length - 1][0].transcript;
-        processLocal(result);
-    };
-
-    let isRecording = false;
-    function toggleSession() {
-        const btn = document.getElementById('start-btn');
-        if (!isRecording) {
-            rec.start();
-            isRecording = true;
-            btn.innerText = "STOP SESSION";
-            btn.style.background = "#e74c3c";
-            speak("System online. Say tooth number.");
-        } else {
-            rec.stop();
-            isRecording = false;
-            btn.innerText = "START SESSION";
-            btn.style.background = "#27ae60";
-        }
-    }
-</script>
-</body>
-</html>
+    let appState = "idle"; // init, general, perio
+    let recordingLog = [];
+    
+    /* --- PERIO STATE MACHINE --- */
+    let perioPhaseIndex = 0;
+    let currentToothIndex = 0;
+    const perioSequence = [
+        { name: "Upper Buccal Probing", type: "PD", side: "buccal", teeth: [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28], prompt: "Start probing depth, 18 to 28 buccal." },
+        { name: "Upper Buccal BOP", type: "BOP", side: "buccal", teeth: [28,27,26,25,24,23,22,21,11,12,13,14,15,16,17,18], prompt: "Record BOP from 28 to 18 buccal." },
+        { name: "Upper Palatal Probing", type: "PD", side: "palatal", teeth: [28,27,26,25,24,23,22,21,11,12,13,14,15,16,17,18], prompt: "To palatal. Probing depth 28 to 18." },
+        { name: "Upper Palatal BOP", type: "BOP", side: "palatal", teeth: [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28], prompt: "Record BOP 18 to 28 palatal." },
+        { name: "Lower Buccal Probing", type: "PD", side: "buccal", teeth: [38,37,36,35,34,33,32,31,41,42,43,44,45,46,47,48], prompt: "Lower arch. Probing depth 38 to 48 buccal." },
+        { name: "Lower Buccal BOP", type: "BOP", side: "buccal", teeth: [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38], prompt: "Record BOP 48 to 38 buccal." },
+        { name: "Lower Lingual Probing", type: "PD", side: "palatal", teeth: [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38], prompt: "To lingual. Probing depth 48 to 38." },
+        { name: "Lower Lingual BOP", type: "BOP", side: "palatal", teeth: [38,37,36,35,34,33,32,31,41,42,43,44,45,46,47,48], prompt: "Record BOP 38 to 48
