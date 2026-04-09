@@ -8,22 +8,24 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: `Extract dental data from: "${text}". 
-                Required JSON format: [{"id": "14", "status": "missing", "surfaces": {"O": "composite"}}]
-                Rules: 
-                - Return ONLY a JSON array.
-                - id must be string (11-48).
-                - Valid status: missing, implant, zirconia_crown, cmc_crown.
-                - Valid surfaces: B, L, M, D, O.` }] }],
-                generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
+                contents: [{ parts: [{ text: `Extract dental findings from: "${text}". 
+                Output a JSON array of objects. 
+                Each object MUST have:
+                - "id": string (FDI 11-48)
+                - "status": optional string ("missing", "implant", "zirconia_crown", "cmc_crown")
+                - "surfaces": optional object (keys: B, L, M, D, O; value: "composite", "gi", "caries", "abrasion")
+                Example: [{"id": "14", "surfaces": {"O": "composite"}}, {"id": "18", "status": "missing"}]` }] }],
+                generationConfig: { 
+                    responseMimeType: "application/json",
+                    temperature: 0.1 
+                }
             })
         });
 
         const data = await response.json();
-        // 抓取最外層的 [ ] 確保解析成功
-        const raw = data.candidates[0].content.parts[0].text;
-        const match = raw.match(/\[[\s\S]*\]/);
-        res.status(200).json(JSON.parse(match ? match[0] : raw));
+        // 直接輸出內容，因為已經強制 JSON 格式
+        const jsonResponse = JSON.parse(data.candidates[0].content.parts[0].text);
+        res.status(200).json(jsonResponse);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
