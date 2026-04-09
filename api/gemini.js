@@ -8,28 +8,22 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                systemInstruction: {
-                    parts: [{ text: `You are a strict dental data extractor. 
-                    Rules:
-                    1. Return ONLY a JSON ARRAY.
-                    2. id: string (e.g. "14").
-                    3. status: "missing", "implant", "zirconia_crown", "cmc_crown".
-                    4. surfaces: object (e.g. {"O":"composite"}).
-                    If input is "18 17 16 missing", output: [{"id":"18","status":"missing"},{"id":"17","status":"missing"},{"id":"16","status":"missing"}]` }]
-                },
-                contents: [{ parts: [{ text: text }] }],
+                contents: [{ parts: [{ text: `Extract dental data from: "${text}". 
+                Required JSON format: [{"id": "14", "status": "missing", "surfaces": {"O": "composite"}}]
+                Rules: 
+                - Return ONLY a JSON array.
+                - id must be string (11-48).
+                - Valid status: missing, implant, zirconia_crown, cmc_crown.
+                - Valid surfaces: B, L, M, D, O.` }] }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
             })
         });
 
         const data = await response.json();
-        let rawText = data.candidates[0].content.parts[0].text;
-        
-        // 強制過濾掉任何非 JSON 字符 (如 % 或 markdown)
-        const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-        const finalJson = jsonMatch ? jsonMatch[0] : rawText;
-        
-        res.status(200).json(JSON.parse(finalJson));
+        // 抓取最外層的 [ ] 確保解析成功
+        const raw = data.candidates[0].content.parts[0].text;
+        const match = raw.match(/\[[\s\S]*\]/);
+        res.status(200).json(JSON.parse(match ? match[0] : raw));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
