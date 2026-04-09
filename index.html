@@ -3,28 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio Pro - Clinical Final</title>
+    <title>Voice Perio Pro - Final Clinical</title>
     <style>
         :root { --primary: #3498db; --success: #27ae60; --bg: #f8fafc; --divider: rgba(52, 152, 219, 0.4); }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; padding: 0; margin: 0; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); text-align: center; margin: 0; padding: 0; }
         .header { background: white; padding: 15px; border-bottom: 3px solid var(--primary); }
         
-        /* 十字分隔線佈局 */
         .chart-wrapper { 
             position: relative; max-width: 1050px; margin: 20px auto; 
             background: white; padding: 50px 20px; border-radius: 15px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 70px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 70px;
         }
         .v-divider { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: var(--divider); transform: translateX(-50%); z-index: 1; }
         .h-divider { position: absolute; left: 0; right: 0; top: 50%; height: 3px; background: var(--divider); transform: translateY(-50%); z-index: 1; }
 
         .row { display: grid; grid-template-columns: repeat(16, 1fr); gap: 10px; position: relative; z-index: 2; }
         .tooth-container { display: flex; flex-direction: column; align-items: center; position: relative; }
-        .tooth-label { font-weight: bold; font-size: 14px; margin-bottom: 6px; color: #475569; }
-        .odontogram { width: 48px; height: 48px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; position: relative; }
-        .surface { fill: #fff; stroke: #94a3b8; stroke-width: 1; }
+        .tooth-label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #475569; }
+        .odontogram { width: 48px; height: 48px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; }
         
-        /* 顏色定義 */
         .c-composite { fill: #3498db !important; }
         .c-gi { fill: #9b59b6 !important; }
         .c-caries { fill: #e74c3c !important; }
@@ -32,19 +29,18 @@
         .missing-x { display: none; position: absolute; top: 0; left: 0; width: 48px; height: 48px; pointer-events: none; }
         .t-missing .missing-x { display: block; }
         .t-missing .odontogram { opacity: 0.2; }
-        .t-implant .odontogram { border: 3px solid #1e293b; border-radius: 50%; }
 
         .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; border-top: 2px solid #eee; z-index: 1000; }
-        #start-btn { padding: 15px 60px; font-size: 18px; border-radius: 50px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
-        #live-box { background: #f1f5f9; padding: 12px; border-radius: 10px; margin-top: 10px; font-weight: bold; min-height: 24px; color: #8e44ad; }
-        #ai-status { background: #1e293b; color: #38bdf8; padding: 10px; margin: 10px auto; max-width: 900px; border-radius: 8px; font-family: monospace; font-size: 11px; text-align: left; }
+        #start-btn { padding: 15px 60px; font-size: 18px; border-radius: 40px; border: none; background: var(--success); color: white; cursor: pointer; font-weight: bold; }
+        #status-bar { background: #f1f5f9; padding: 12px; border-radius: 10px; margin-top: 10px; font-weight: bold; min-height: 24px; color: #8e44ad; }
+        #log-area { background: #1e293b; color: #38bdf8; padding: 10px; margin: 10px auto; max-width: 900px; border-radius: 8px; font-family: monospace; font-size: 12px; text-align: left; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div id="mode-title" style="font-weight: bold; font-size: 24px;">SYSTEM READY</div>
-    <div id="live-box">Click Start Session</div>
+    <div id="mode-title" style="font-weight: bold; font-size: 22px;">VOICE PERIO - CLINICAL</div>
+    <div id="status-bar">Press Start Session</div>
 </div>
 
 <div class="chart-wrapper">
@@ -53,7 +49,7 @@
     <div class="row" id="lower-grid"></div>
 </div>
 
-<div id="ai-status">AI Response Log will appear here.</div>
+<div id="log-area">AI LOG: Waiting for input...</div>
 
 <div class="controls">
     <button id="start-btn">Start Session</button>
@@ -75,11 +71,11 @@
                     <div class="tooth-label">${id}</div>
                     <div style="position:relative; width:48px; height:48px;">
                         <svg class="odontogram" viewBox="0 0 100 100">
-                            <path id="${id}-B" class="surface" d="M0 0 L100 0 L75 25 L25 25 Z" />
-                            <path id="${id}-L" class="surface" d="M0 100 L100 100 L75 75 L25 75 Z" />
-                            <path id="${id}-M" class="surface" d="M0 0 L25 25 L25 75 L0 100 Z" />
-                            <path id="${id}-D" class="surface" d="M100 0 L75 25 L75 75 L100 100 Z" />
-                            <rect id="${id}-O" class="surface" x="25" y="25" width="50" height="50" />
+                            <path id="${id}-B" fill="#fff" stroke="#94a3b8" d="M0 0 L100 0 L75 25 L25 25 Z" />
+                            <path id="${id}-L" fill="#fff" stroke="#94a3b8" d="M0 100 L100 100 L75 75 L25 75 Z" />
+                            <path id="${id}-M" fill="#fff" stroke="#94a3b8" d="M0 0 L25 25 L25 75 L0 100 Z" />
+                            <path id="${id}-D" fill="#fff" stroke="#94a3b8" d="M100 0 L75 25 L75 75 L100 100 Z" />
+                            <rect id="${id}-O" fill="#fff" stroke="#94a3b8" x="25" y="25" width="50" height="50" />
                         </svg>
                         <svg class="missing-x" viewBox="0 0 100 100"><line x1="0" y1="0" x2="100" y2="100" stroke="red" stroke-width="12" /><line x1="100" y1="0" x2="0" y2="100" stroke="red" stroke-width="12" /></svg>
                     </div>
@@ -93,21 +89,17 @@
         const tid = String(id).trim();
         const container = document.getElementById(`container-${tid}`);
         if (!container) return;
-        const data = teethData[tid];
-        container.classList.remove('t-missing', 't-implant');
-        if (data.status === 'missing') container.classList.add('t-missing');
-        if (data.status === 'implant') container.classList.add('t-implant');
+        
+        container.classList.remove('t-missing');
+        if (teethData[tid].status === 'missing') container.classList.add('t-missing');
+
         ['B','L','M','D','O'].forEach(s => {
             const p = document.getElementById(`${tid}-${s}`);
-            if(p) p.className.baseVal = "surface " + (data.surfaces[s] ? `c-${data.surfaces[s]}` : "");
+            if (p) {
+                p.style.fill = teethData[tid].surfaces[s] === 'composite' ? '#3498db' : 
+                               teethData[tid].surfaces[s] === 'gi' ? '#9b59b6' : '#fff';
+            }
         });
-    }
-
-    function speak(t) {
-        window.speechSynthesis.cancel();
-        const m = new SpeechSynthesisUtterance(t);
-        m.lang = 'en-US';
-        window.speechSynthesis.speak(m);
     }
 
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -115,17 +107,13 @@
 
     rec.onresult = (event) => {
         const text = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-        document.getElementById('live-box').innerText = "Heard: " + text;
-
+        document.getElementById('status-bar').innerText = "Heard: " + text;
+        
         if (appState === "selecting") {
             if (text.includes("general")) {
                 appState = "charting";
                 document.getElementById('mode-title').innerText = "GENERAL CHARTING";
-                speak("General mode online.");
-            } else if (text.includes("perio")) {
-                appState = "charting";
-                document.getElementById('mode-title').innerText = "PERIO CHARTING";
-                speak("Perio mode online.");
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance("General online."));
             }
         } else if (appState === "charting") {
             processAI(text);
@@ -133,9 +121,9 @@
     };
 
     async function processAI(text) {
-        const box = document.getElementById('live-box');
-        const log = document.getElementById('ai-status');
-        box.innerText = "Gemini Analyzing...";
+        const bar = document.getElementById('status-bar');
+        const log = document.getElementById('log-area');
+        bar.innerText = "Gemini Analyzing...";
 
         try {
             const res = await fetch('/api/gemini', {
@@ -144,34 +132,32 @@
                 body: JSON.stringify({ text })
             });
             const data = await res.json();
-            log.innerText = "AI RAW DATA: " + JSON.stringify(data);
+            log.innerText = "AI RESPONSE: " + JSON.stringify(data);
 
             if (data.apiError) {
-                log.innerText = "Error: " + data.apiError;
+                bar.innerText = "Error: " + data.apiError;
                 return;
             }
 
             if (Array.isArray(data)) {
-                let spoken = [];
                 data.forEach(item => {
                     const tid = String(item.id);
                     if (teethData[tid]) {
                         if (item.status) teethData[tid].status = item.status;
                         if (item.surfaces) Object.assign(teethData[tid].surfaces, item.surfaces);
                         updateUI(tid);
-                        spoken.push("tooth " + tid.split('').join(' '));
                     }
                 });
-                if (spoken.length > 0) speak("Recorded " + spoken.join(", "));
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance("Recorded."));
             }
         } catch (e) { log.innerText = "System Error: " + e.message; }
-        box.innerText = "Ready.";
+        bar.innerText = "Ready.";
     }
 
     document.getElementById('start-btn').onclick = () => {
         appState = "selecting";
-        document.getElementById('start-btn').innerText = "LISTENING";
-        speak("General or Perio?");
+        document.getElementById('start-btn').innerText = "MIC ON";
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance("General or Perio?"));
         try { rec.start(); } catch(e) {}
     };
 </script>
