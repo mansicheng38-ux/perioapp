@@ -3,10 +3,12 @@ export default async function handler(req, res) {
     const { text } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 標準的模型網址
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 終極防彈橫槓：強制生成短橫槓 (-)，無視任何編輯器的自動校正
+    const dash = String.fromCharCode(45);
+    const model = "gemini" + dash + "1.5" + dash + "flash";
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey;
 
-    // 回到之前會動的寫法：把規則全部放進一般的 Prompt 裡，不使用 SystemInstruction
+    // 將所有規則放進一般的 prompt 裡，避開 not supported 錯誤
     const fullPrompt = `
     You are a dental charting AI. Parse the transcript into a JSON array of actions.
     Teeth are FDI standard (11-48). "one one" means "11".
@@ -31,7 +33,6 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                // 直接將 fullPrompt 放在 contents 裡，徹底避開 not supported 錯誤
                 contents: [{ parts: [{ text: fullPrompt }] }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
             })
@@ -41,7 +42,8 @@ export default async function handler(req, res) {
         if (data.error) return res.status(200).json({ error: data.error.message });
         
         let aiResult = data.candidates[0].content.parts[0].text;
-        aiResult = aiResult.replace(/```json/gi, '').replace(/```/g, '').trim(); // 強制淨化格式
+        // 強制洗掉 Gemini 可能自作聰明加上的 markdown 符號
+        aiResult = aiResult.replace(/```json/gi, '').replace(/```/g, '').trim();
         res.status(200).json(JSON.parse(aiResult));
     } catch (error) {
         res.status(200).json({ error: "Parse Error: " + error.message });
