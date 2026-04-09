@@ -3,25 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Perio Pro (Cantonese)</title>
+    <title>Voice Perio Pro HK</title>
     <style>
         :root { --primary: #3498db; --danger: #e74c3c; --bg: #f4f7f6; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; text-align: center; }
-        .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 5px solid var(--primary); }
+        .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid var(--primary); }
         .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-width: 900px; margin: 0 auto 20px; }
         .tooth { background: white; border: 1px solid #ddd; padding: 15px 5px; border-radius: 8px; font-weight: bold; height: 50px; display: flex; align-items: center; justify-content: center; position: relative; }
-        .tooth.missing { background: #455a64 !important; color: white; opacity: 0.6; }
+        .tooth.missing { background: #455a64 !important; color: white; }
         .tooth.missing::after { content: '✕'; position: absolute; font-size: 35px; color: rgba(255,0,0,0.5); }
         .controls { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 25px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
         #start-btn { padding: 18px 60px; font-size: 20px; border-radius: 40px; border: none; background: #27ae60; color: white; cursor: pointer; font-weight: bold; }
-        #live-box { color: #888; font-style: italic; margin-top: 10px; font-size: 14px; min-height: 20px; }
+        /* 增加明顯的文字反饋區 */
+        #live-box { background: #e8f4fd; padding: 10px; border-radius: 8px; color: #2980b9; margin-top: 10px; font-weight: bold; min-height: 24px; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div style="font-weight: bold; font-size: 18px;">模式：一般檢查 (廣東話)</div>
-    <div id="live-box">請點擊開始並說出牙位...</div>
+    <div style="font-weight: bold; font-size: 18px;">模式：一般檢查 (廣東話數字優化)</div>
+    <div id="live-box">請點擊開始</div>
 </div>
 
 <div class="grid" id="upper-grid"></div>
@@ -35,10 +36,8 @@
     const uIds = [18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28];
     const lIds = [48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38];
     const teethData = {};
-    let silenceTimer;
-    let accumulatedText = "";
+    let silenceTimer, accumulatedText = "";
 
-    // 初始化 UI
     window.onload = () => {
         const draw = (ids, target) => {
             const el = document.getElementById(target);
@@ -52,28 +51,27 @@
         draw(uIds, 'upper-grid'); draw(lIds, 'lower-grid');
     };
 
-    // 廣東話覆誦
-    function speakCantonese(t) {
+    function speak(t) {
         window.speechSynthesis.cancel();
         const m = new SpeechSynthesisUtterance(t);
-        m.lang = 'zh-HK'; // 設定為廣東話
-        m.rate = 1.1;     // 速度稍微快一點
+        m.lang = 'zh-HK';
         window.speechSynthesis.speak(m);
     }
 
-    // 中文字轉數字工具 (處理 "一六" 這種情況)
-    function cnToNum(str) {
-        const map = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'零':0};
-        let newStr = str;
-        for (let key in map) {
-            newStr = newStr.replace(new RegExp(key, 'g'), map[key]);
+    // --- 強化版廣東話數字處理 ---
+    function parseCantoneseNumbers(text) {
+        const map = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'零':0,'十':1};
+        // 處理常見聽錯字：將「路/落」修正為「六」
+        let fixed = text.replace(/路|落/g, '六').replace(/衣|伊/g, '一');
+        let result = "";
+        for (let char of fixed) {
+            result += map[char] !== undefined ? map[char] : char;
         }
-        return newStr;
+        return result;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const rec = new SpeechRecognition();
-    rec.lang = 'zh-HK'; // 切換至廣東話
+    const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    rec.lang = 'zh-HK';
     rec.continuous = true;
     rec.interimResults = true;
 
@@ -84,57 +82,46 @@
             else interim += event.results[i][0].transcript;
         }
 
-        document.getElementById('live-box').innerText = "聽緊: " + (accumulatedText + interim);
+        const currentText = (accumulatedText + interim);
+        document.getElementById('live-box').innerText = "聽緊: " + currentText;
 
-        // --- 核心：2 秒停頓偵測 ---
         clearTimeout(silenceTimer);
         silenceTimer = setTimeout(() => {
-            let finalStr = (accumulatedText + interim);
-            if (finalStr.trim()) {
-                processCantoneseData(finalStr);
-            }
-            accumulatedText = ""; // 執行後清空
+            if (currentText.trim()) processData(currentText);
+            accumulatedText = "";
         }, 2000); 
     };
 
-    function processCantoneseData(text) {
-        // 先將文字中的中文數字轉為阿拉伯數字
-        let processedText = cnToNum(text);
-        // 抓取所有數字 (例如 "16", "17")
-        const nums = processedText.match(/\d+/g);
+    function processData(text) {
+        let processed = parseCantoneseNumbers(text);
+        const nums = processed.match(/\d{2}/g); // 抓取兩位數的牙位
         
-        // 判斷關鍵字：缺失、冇咗、missing、唔見咗
-        const isMissing = text.includes("缺失") || text.includes("冇") || text.includes("唔見") || text.includes("missing");
+        // 擴大關鍵字範圍
+        const isMissing = /缺失|冇|唔見|甩|蚊|missing/.test(text);
 
         if (isMissing && nums) {
+            let marked = [];
             nums.forEach(n => {
                 if (teethData[n]) {
                     teethData[n].missing = true;
                     document.getElementById(`t-${n}`).classList.add('missing');
+                    marked.push(n);
                 }
             });
-            // 廣東話覆誦確認
-            const reply = `紀錄完畢，${nums.join("號, ")}號缺失`;
-            speakCantonese(reply);
-            document.getElementById('live-box').innerText = reply;
+            if(marked.length > 0) {
+                speak(`紀錄完畢，${marked.join(", ")}號缺失`);
+            }
         }
     }
 
     document.getElementById('start-btn').onclick = async () => {
-        // 提醒：不能用 file:// 開啟
-        if (window.location.protocol === 'file:') {
-            alert("❌ 請使用 GitHub Pages 網址開啟，本地檔案無法使用語音。");
-            return;
-        }
         try {
             await navigator.mediaDevices.getUserMedia({ audio: true });
             rec.start();
             document.getElementById('start-btn').innerText = "系統運行中...";
             document.getElementById('start-btn').style.background = "#e74c3c";
-            speakCantonese("系統已啟動，請講出牙位號碼。");
-        } catch (e) {
-            alert("麥克風錯誤: " + e.message);
-        }
+            speak("已啟動");
+        } catch (e) { alert(e.message); }
     };
 </script>
 </body>
